@@ -1,0 +1,9 @@
+GaussianBlur
+addWeighted
+Sobel
+sqrt
+kernel
+vector.operator[]
+size
+basic_string.operator=
+basic_ostream.operator<<

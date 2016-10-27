@@ -1,0 +1,28 @@
+fprintf 0:U
+fscanf 0:U
+basic_ostream.operator<< 0:U
+basic_istream.operator>> 0:U
+strtok 0:U
+isInteger 0:U
+sprintf 0:U
+fclose 0:U
+ferror 0:U
+feof 0:U
+gettimeofday 0:U
+kernel_cpu 1:U 2:U 7:U 8:U 9:U 10:U
+kernel_cpu_2 1:U 6:U 7:U 8:U 9:U 10:U 11:U 12:U 13:U
+PixelOfChildren.operator= 0:U
+PixelOfNode.operator= 0:U
+operator= 0:U
+strncpy 0:U
+TextureAddress.operator= 0:U
+write16u 0:U
+cpu_stencil 2:U 3:U
+pb_SwitchToTimer 0:U
+readdatafile 0:U
+doCompute 0:U 2:U 5:U 7:U
+randlc 0:U
+vranlc 1:U 3:U
+operator>> 0:U
+getline 0:U 1:U
+basic_string.operator= 0:U
