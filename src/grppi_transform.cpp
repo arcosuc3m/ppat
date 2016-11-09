@@ -12,10 +12,11 @@ void MyASTVisitor::PPATtoGRPPI(){
 	for(unsigned i = 0; i< Loops.size(); i++){
         //If the loop matches with a farm pattern
 		if(Loops[i].farm){
+            //Generated code
 			std::stringstream SSBefore;
 			std::stringstream GenLambda;
 			std::stringstream TaskLambda;
-            //FIXME: It only works for while loops where the stop condition is specified in the loop header
+			std::stringstream SinkLambda;
             //Gets the location of the end of the condition in a while construct
             clang::SourceLocation e(clang::Lexer::getLocForEndOfToken( Loops[i].conditionRange.getEnd()  , 0, sm, lopt));
             //Intoduces the farm function using a sequential execution model
@@ -29,12 +30,11 @@ void MyASTVisitor::PPATtoGRPPI(){
             clang::SourceLocation gb;
             clang::BeforeThanCompare<clang::SourceLocation> isBefore(sm);
              
-
-            //If the generation lambda is not in the loop header
-
+            //FIXME: Multiple generation code sections
+            //If the generation lambda is not in the loop header 
             if(genBegin!=Loops[i].RangeLoc.getBegin()&&genEnd!=Loops[i].RangeLoc.getBegin()){           
                 //Gets the statement location of the starting and ending points of the stream generation
-               bool endStmt = true;
+                bool endStmt = true;
                 for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
                    if(  genEnd.getRawEncoding() <= (*stmt).getBegin().getRawEncoding() ){ genEnd = (*stmt).getBegin() ; endStmt = false; break;  }
                 }          
@@ -58,9 +58,9 @@ void MyASTVisitor::PPATtoGRPPI(){
             Loops[i].genStart = genBegin;
             Loops[i].genEnd = genEnd;
             
-
+            //Get the outputs of the stream generator function
             getStreamGeneratorOut(i);
-            //If the stream generation is on the end of the body its necesary to not lose the first iteration.
+            //If the stream generation is on the end of the body its necesary to not lose the first iteration. Then the returning element is stored and passed to the task phase before computing the next element.
             std::stringstream auxGen;
             if(Loops[i].genBefore){
                 auxGen << GenLambda.str();
@@ -72,17 +72,18 @@ void MyASTVisitor::PPATtoGRPPI(){
             //Gets the tokens corresponding to the condition from the loop header
             }
 
-            //FIXME: If the stop condition is in the loop body it should detect where the break. The break should be in a if condition and the, the tool should extract the condition from the if.
+            //FIXME: If the stop condition is in the loop body it should detect where is the break. The break should be in a if condition and then, the tool should extract the condition from the if.
             writeGenFunc(Loops[i].cond, GenLambda, Loops[i].bodyRange.getBegin() , Loops[i].RangeLoc.getBegin());
  
-            //Generates the non optionals to be returned
+            //Generates the optional to be returned
             GenLambda<< ")) ? optional<";
             std::stringstream outputtype;
             std::stringstream outputname;
-
+            //If there are multiple output elements it generates a tuple 
             if(Loops[i].genVar.size()>1){
                 outputtype<<"std::tuple<";
             }
+            //Every variable generated in the stream generator function its intorduced
             for(auto outvar = Loops[i].genVar.begin(); outvar != Loops[i].genVar.end(); outvar++){
                 outputtype<<(*outvar).second;
                 outputname<<(*outvar).first;
@@ -109,11 +110,58 @@ void MyASTVisitor::PPATtoGRPPI(){
             }
 
             GenLambda<<"},\n";
-            
+            //Generation of the sink lambda
+            std::stringstream sinkinput;
+            std::stringstream sinkname;
+            //If there exists at least on part of the code corresponding to a sink lambda
+            if(Loops[i].sinkZones.size() > 0 ){
+                SourceLocation currentLoc = Loops[i].bodyRange.getBegin();
+                //Introduces the sink lmabda
+                SinkLambda << "[&](";
+                //Generates the inputs of the sink lambda function
+                if(Loops[i].taskVar.size()>1){
+                    sinkinput << "std::tuple< ";
+                }
+
+                for(auto invar = Loops[i].taskVar.begin(); invar != Loops[i].taskVar.end(); invar++){
+                    sinkinput<<(*invar).second;
+                    sinkname<<(*invar).first;
+                    auto aux = invar;
+                    aux++;
+                    if( aux != Loops[i].taskVar.end()){
+                       sinkinput<<",";
+                       sinkname<<",";
+                    }
+                }
+                
+
+
+                if(Loops[i].taskVar.size()>1){
+                    sinkinput << "> StreamItem";
+                }else{
+                    sinkinput <<" "<< sinkname.str();
+                }
+                SinkLambda << sinkinput.str();
+                SinkLambda << "){\n";
+
+                //Decompress the different input from the tuple
+                if(Loops[i].taskVar.size()>1){
+                  for(auto invar = Loops[i].taskVar.begin(); invar != Loops[i].taskVar.end(); invar++){
+                    SinkLambda << (*invar).second << " " << (*invar).first << ";\n";
+                  }
+                  SinkLambda << "std::tie("<<sinkname.str()<<") = StreamItem;\n";
+                }
+                //Introduce the different code sections related to the sink 
+                for(auto sink = Loops[i].sinkZones.begin(); sink != Loops[i].sinkZones.end();  sink++){
+                     if((*sink).second.first.getRawEncoding() > currentLoc.getRawEncoding()) currentLoc = (*sink).second.first;
+                     SinkLambda<< std::string(sm.getCharacterData(currentLoc), sm.getCharacterData( (*sink).second.second ) - sm.getCharacterData( currentLoc));
+                }
+                SinkLambda<< " }";
+            }
+    
          
             clang::SourceLocation b(clang::Lexer::getLocForEndOfToken( Loops[i].bodyRange.getBegin()  , 0, sm, lopt));
             //Generates the task lambda
-            //FIXME: Its required to detect sink lambda if there exists one
             TaskLambda<<"[=](";
             //Generates the task lambda argument
             TaskLambda<< outputtype.str();
@@ -147,19 +195,38 @@ void MyASTVisitor::PPATtoGRPPI(){
             
 
             //Generates the task lambda from the end of the stream generation lambda to the end of the loop.
-            SourceLocation BodyBegin = SourceLocation(clang::Lexer::getLocForEndOfToken( Loops[i].bodyRange.getBegin()  , 0, sm, lopt));
-            if(BodyBegin.getRawEncoding()< gb.getRawEncoding()){
-                  TaskLambda << std::string(sm.getCharacterData(BodyBegin), sm.getCharacterData( BodyBegin) - sm.getCharacterData(BodyBegin));
+            for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
+                  bool isTask = true;
+
+                  if((*stmt).getBegin().getRawEncoding() >= gb.getRawEncoding() 
+                      &&  genEnd.getRawEncoding() > (*stmt).getBegin().getRawEncoding() ) isTask= false;
+
+                  for(auto sink = Loops[i].sinkZones.begin(); sink != Loops[i].sinkZones.end();  sink++){
+                     if((*stmt).getBegin().getRawEncoding() >= (*sink).second.first.getRawEncoding() 
+                      &&  (*sink).second.second.getRawEncoding() > (*stmt).getBegin().getRawEncoding() ) isTask= false;
+                  }
+                  if(isTask){ 
+                      TaskLambda <<"\n";
+                      TaskLambda << std::string(sm.getCharacterData((*stmt).getBegin() ), 
+                              sm.getCharacterData( clang::Lexer::getLocForEndOfToken( (*stmt).getEnd()  , 0, sm, lopt) ) - sm.getCharacterData( (*stmt).getBegin() ) );
+                 }
+
             }
-            SourceLocation bodyEnd(clang::Lexer::getLocForEndOfToken( Loops[i].bodyRange.getEnd()  , 0, sm, lopt));
-            if(bodyEnd.getRawEncoding() > genEnd.getRawEncoding()){
-                TaskLambda << std::string(sm.getCharacterData(genEnd),
-                       sm.getCharacterData( bodyEnd ) - sm.getCharacterData(genEnd));
+            //If there exists a sink function and has input arguments, generates the outputs from the task lambda
+            if(Loops[i].sinkZones.size()>0 && Loops[i].taskVar.size()>0){
+                TaskLambda << "\nreturn ";
+                if(Loops[i].taskVar.size()>1) TaskLambda << sinkinput.str()<<"(";
+                TaskLambda << sinkname.str();
+                if(Loops[i].taskVar.size()>1) TaskLambda << ")";
+                TaskLambda <<";\n";
+                
             }
-            
-            TaskLambda<<"});\n";
+          
+            TaskLambda << "\n}\n";
             SSBefore << GenLambda.str();
             SSBefore << TaskLambda.str();
+            SSBefore << SinkLambda.str();
+            SSBefore<<");\n";
             //Remove original source code
             TheRewriter.RemoveText(Loops[i].RangeLoc);
             //Insert the farm funtion in the source code

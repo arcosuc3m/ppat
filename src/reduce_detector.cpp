@@ -271,7 +271,7 @@ void MyASTVisitor::reduceDetect(){
 		}	
 	
                 if(valid&&!feedback){
-			std::cout<<"======= REDUCE PATTERN DETECTED =======\n";
+//			std::cout<<"======= REDUCE PATTERN DETECTED =======\n";
 			Loops[i].reduce = true;
 			numreduce++;
 		
@@ -309,7 +309,7 @@ void MyASTVisitor::reduceDetect(){
 				SSBefore<<"]]\n";
 				
 				for ( unsigned ops = 0; ops < operators.size(); ops++ ){
-					std::cout<<"OPERATOR " << operators[ops] << "\n";
+					//std::cout<<"OPERATOR " << operators[ops] << "\n";
 					Loops[i].operators.push_back(operators[ops]);
 				}
 		

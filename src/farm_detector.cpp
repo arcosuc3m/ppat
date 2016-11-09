@@ -1,3 +1,188 @@
+
+/**
+  \fn  bool checkEmptyTask(int i)
+
+  Check wether a farm has or not a code region potentially parallelizable or not. 
+  If there is no parallel section, the loop is discarded to be refactored as a farm.
+
+*/
+
+bool MyASTVisitor::checkEmptyTask(int i){
+   bool empty = true;
+   for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
+      bool isTask = true;
+      if((*stmt).getBegin().getRawEncoding() >= Loops[i].genStart.getRawEncoding()
+          &&  Loops[i].genEnd.getRawEncoding() > (*stmt).getBegin().getRawEncoding() ) isTask= false;
+
+      for(auto sink = Loops[i].sinkZones.begin(); sink != Loops[i].sinkZones.end();  sink++){
+         if((*stmt).getBegin().getRawEncoding() >= (*sink).second.first.getRawEncoding()
+          &&  (*sink).second.second.getRawEncoding() > (*stmt).getBegin().getRawEncoding() ) isTask= false;
+      }
+      if(isTask) empty =false;
+   }
+   return empty;
+}
+
+
+/**
+  \fn void getPrivated(int i)
+ 
+  Get the variables used as non shared variables in the loop.
+
+*/
+
+void MyASTVisitor::getPrivated(int i){
+    for(auto refs = (Loops[i].VarRef.end()-1);refs != (Loops[i].VarRef.begin()-1);refs--){
+        bool memoryAccess = false;
+        int mem= 0;
+        //Check if the variable is a container object or an array
+        for(unsigned memAcc = 0; memAcc<Loops[i].MemAccess.size(); memAcc++){
+            if((*refs).Name == Loops[i].MemAccess[memAcc].Name&&
+               (*refs).RefLoc == Loops[i].MemAccess[memAcc].RefLoc){
+                   memoryAccess = true;
+                   mem=memAcc;
+             }
+        }
+        //Check if is a local variable
+        bool local = false;
+        for(unsigned dec = 0;dec<Loops[i].VarDecl.size();dec++){
+             if(Loops[i].VarDecl[dec].Name == (*refs).Name
+                && Loops[i].VarDecl[dec].DeclLoc == (*refs).DeclLoc){
+                    local=true;
+             }
+        }
+        //Check if is a private variable
+        bool privated=false;
+        if(!local&&!memoryAccess){
+             privated = checkPrivate(i, (*refs));
+        }
+        if(privated){
+          Loops[i].privatedVars.insert(std::pair<std::string,ASTVar> ((*refs).Name, (*refs)) );
+        }
+    }
+}
+
+
+/**
+   bool getSinkFunction(int i)
+
+   This function computes the code regions potentially related to the sink lambda function.
+   It takes as sink variables, those variables that are shared among different computing 
+   entities and written, not related to the generation part. Then it checks if the variable 
+   is not used before the first write nor after the las write. If both requirements are met
+   the code region can be used as a sink code region.
+
+   Then this function computes which variables used in the sink zones are modified or comes from
+   previous phases. Note that those variables cannot be the same as the "sink variables".
+
+   Finally, this function returns true if the sink code regions are valid.
+
+*/
+
+bool MyASTVisitor::getSinkFunction(int i){
+   std::map< std::string, std::pair<clang::SourceLocation, clang::SourceLocation> > sinkVars;
+   for(auto refs = Loops[i].VarRef.begin(); refs != Loops[i].VarRef.end();refs++){
+        //Check if is a local variable
+        bool local = false;
+        for(unsigned dec = 0;dec<Loops[i].VarDecl.size();dec++){
+             if(Loops[i].VarDecl[dec].Name == (*refs).Name
+                && Loops[i].VarDecl[dec].DeclLoc == (*refs).DeclLoc){
+                    local=true;
+             }
+        }
+        //Check if is a private variable
+        bool privated=false;
+        if(!local){
+             privated = checkPrivate(i, (*refs));
+        }
+        //If the variable is shared and writen annotate it as potetial sink var
+        if(!local && !privated && (*refs).lvalue){
+           bool inserted = false;
+           for(auto sink = sinkVars.begin(); sink != sinkVars.end(); sink++){
+              if((*sink).first == (*refs).Name){
+                  if((*sink).second.first.getRawEncoding() > (*refs).RefLoc ) (*sink).second.first = (*refs).RefSourceLoc;
+                  if((*sink).second.second.getRawEncoding() < (*refs).RefLoc ) (*sink).second.second = (*refs).RefSourceLoc;
+                  inserted = true;
+              }
+           }
+           if(!inserted){
+              sinkVars.insert( std::pair< std::string, std::pair <clang::SourceLocation, clang::SourceLocation> >( (*refs).Name, std::pair <clang::SourceLocation, clang::SourceLocation> ( (*refs).RefSourceLoc, (*refs).RefSourceLoc )));
+           }
+        }        
+   }
+
+   SourceManager &sm = TheRewriter.getSourceMgr();
+   clang::LangOptions lopt;
+   clang::BeforeThanCompare<clang::SourceLocation> isBefore(sm);
+
+
+   //Get sink zone for the sink vars
+   for(auto sink = sinkVars.begin(); sink != sinkVars.end(); sink++){
+      bool endStmt = true;
+      for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
+         if( ( *sink).second.second.getRawEncoding() < (*stmt).getBegin().getRawEncoding() ){ (*sink).second.second = (*stmt).getBegin() ; endStmt = false; break;  }
+      }
+      for(auto stmt = Loops[i].stmtLoc.end()-1 ; stmt != Loops[i].stmtLoc.begin()-1; stmt--){
+         if( (*stmt).getEnd().getRawEncoding() < (*sink).second.first.getRawEncoding() ){ (*sink).second.first = (*(stmt+1)).getBegin(); break;}
+      }
+      if(endStmt) (*sink).second.second = Loops[i].RangeLoc.getEnd();
+   }
+   //If the modified variable is never used after the last write or before the last write, its a sink variable
+   bool sinkZone = false;
+   for(auto sink = sinkVars.begin(); sink != sinkVars.end(); sink++){
+      bool validZone = true;
+      for(auto refs = Loops[i].VarRef.begin(); refs != Loops[i].VarRef.end();refs++){
+          if((*sink).first == (*refs).Name && (*refs).RefLoc < (*sink).second.first.getRawEncoding()) validZone = false;
+          if((*sink).first == (*refs).Name && (*refs).RefLoc >= (*sink).second.second.getRawEncoding()) validZone = false;
+      }
+      if(validZone){
+          Loops[i].sinkZones.insert( (*sink) );
+          sinkZone = true;
+      }
+   }
+   std::map<std::string, std::string> sinkUsedVars;
+   if(sinkZone){
+      //Get the variables used in the sink zone
+      for(auto refs = Loops[i].VarRef.begin(); refs != Loops[i].VarRef.end();refs++){
+         bool used = false;
+         for(auto sink = Loops[i].sinkZones.begin(); sink != Loops[i].sinkZones.end(); sink++){
+           if((*refs).RefLoc >= (*sink).second.first.getRawEncoding() && (*refs).RefLoc < (*sink).second.second.getRawEncoding() ){
+              used=true;
+           }
+         }
+         if(used)
+            sinkUsedVars.insert(std::pair<std::string,std::string> ( (*refs).Name, (*refs).type ) );
+      }
+      //Computes if the used variables comes from other phases
+      for(auto refs = Loops[i].VarRef.begin(); refs != Loops[i].VarRef.end();refs++){
+         bool isIn = false;
+         for(auto sink = Loops[i].sinkZones.begin(); sink != Loops[i].sinkZones.end(); sink++){
+           if((*refs).RefLoc < (*sink).second.first.getRawEncoding() || (*refs).RefLoc >= (*sink).second.second.getRawEncoding() ){
+             for(auto used = sinkUsedVars.begin(); used!= sinkUsedVars.end(); used++){
+               if((*used).first == (*refs).Name)
+                  isIn = true;
+             } 
+           }
+         }
+         if(isIn)
+            Loops[i].taskVar.insert(std::pair<std::string,std::string> ( (*refs).Name, (*refs).type ) );
+             
+      }
+
+
+   }
+
+   return sinkZone;
+   
+ 
+}
+
+/**
+   \fn void getStreamGeneratorOut (int i )
+
+   Get the variables modified in the stream generation function.
+*/
+
 void MyASTVisitor::getStreamGeneratorOut (int i ){
   std::vector<ASTVar> modifiedVars;
   for(auto var = Loops[i].VarRef.begin(); var != Loops[i].VarRef.end(); var++){
@@ -22,6 +207,12 @@ void MyASTVisitor::getStreamGeneratorOut (int i ){
 
 }
 
+/**
+  std::vector< ASTVar > getOtherGenerations(int i, SourceLocation &fWrite, SourceLocation &lWrite)
+
+  Returns all the modified variables inside the code between fWrite and lWrite. This function is used to know
+  if there are more generator variables.
+*/
 std::vector< ASTVar > MyASTVisitor::getOtherGenerations(int i, SourceLocation &fWrite, SourceLocation &lWrite){
      SourceManager &sm = TheRewriter.getSourceMgr();
      clang::LangOptions lopt;
@@ -37,8 +228,13 @@ std::vector< ASTVar > MyASTVisitor::getOtherGenerations(int i, SourceLocation &f
                   isLocal=true;
              }
          }
+         bool privated = false;
+         //FIXME: THIS PART IS A BIT CONFUSSING
+  /*       for(auto priv = Loops[i].privatedVars.begin(); priv != Loops[i].privatedVars.end(); priv++){
+            if((*priv).first == (*var).Name) privated = true;
+         }*/
          if( (*var).lvalue && (*var).RefLoc >= fWrite.getRawEncoding() 
-              && lWrite.getRawEncoding() > (*var).RefLoc && !isLocal ){ 
+              && lWrite.getRawEncoding() > (*var).RefLoc && !isLocal && !privated ){ 
             modified_variables.push_back((*var));  
          }
      }
@@ -54,7 +250,7 @@ std::vector< ASTVar > MyASTVisitor::getOtherGenerations(int i, SourceLocation &f
      }
      //Get new code locations
      for(auto cond = streamGenerationRefs.begin(); cond != streamGenerationRefs.end(); cond++){
-        std::cout<<"GENERATION VARIABLE "<< (*cond).Name<<"\n";
+        //std::cout<<"GENERATION VARIABLE "<< (*cond).Name<<"\n";
         if((*cond).lvalue){
             if(isBefore((*cond).RefSourceLoc, fWrite)) { fWrite = (*cond).RefSourceLoc; }
             if(isBefore(lWrite, (*cond).RefSourceLoc)) lWrite = (*cond).RefSourceLoc;
@@ -65,6 +261,8 @@ std::vector< ASTVar > MyASTVisitor::getOtherGenerations(int i, SourceLocation &f
 }
 
 bool MyASTVisitor::getStreamGeneration(int i){
+     //FIXME: It requires to detect multiple generation regions
+     //TODO: Its necessary to add in this part the variables modified by an unknown function. If the variable modified by a unknown fucntion its never used or does not depends on the actual generation variables should be discarded and probably added as a sink variable. Also, its necesary to add as stream generation variables, those variables used in a if condition that perfroms a brek inside its body. For including multiple zones is required to detect where the different variables are used in the bode (before or after). //TODO: GOOD LUCK FUTURE ME!
      std::vector< ASTVar> condition_variables;
      //Get first and last writes of the modified condition variables
      //Reads are only allowed between both first and last writes and only after or before the write section. Otherwise is not a farm, since the stream generation is iteration dependent.
@@ -85,7 +283,7 @@ bool MyASTVisitor::getStreamGeneration(int i){
             if(isBefore((*cond).RefSourceLoc,lastWrite)) lastWrite = (*cond).RefSourceLoc;
         }
      }
-
+     //Recompute the code region related to the stream generation formula until the zone doesn't change.
      SourceLocation fWrite = firstWrite;
      SourceLocation lWrite = lastWrite;
      do{
@@ -104,7 +302,7 @@ bool MyASTVisitor::getStreamGeneration(int i){
 
      firstWrite = fWrite;
      lastWrite = lWrite;
-     
+     //Compute if the variable is used after or before
      bool before = false;
      bool after = false;
      if(firstWrite == Loops[i].bodyRange.getBegin() && lastWrite == Loops[i].RangeLoc.getEnd()) return true;
@@ -116,16 +314,13 @@ bool MyASTVisitor::getStreamGeneration(int i){
      
 
      Loops[i].genBefore = before; 
-     Loops[i].genAfter = after; 
-  //   if(before){
-  //     Loops[i].genStart = Loops[i].bodyRange.getBegin();
-  //     Loops[i].genEnd = lastWrite;
-  //   }
-  //   if(after){  
+     Loops[i].genAfter = after;
+ 
      Loops[i].genStart = firstWrite;
      Loops[i].genEnd = lastWrite;
   //   }
 
+     //If the generation variables are not used in the compute or used after and before their modification, the loop cannot be transformed into a farm pattern. 
      if(after&&before){ Loops[i].genStart = Loops[i].bodyRange.getBegin(); Loops[i].genEnd = Loops[i].bodyRange.getBegin();}
      if(!after&&!before){Loops[i].genStart = Loops[i].bodyRange.getBegin(); Loops[i].genEnd = Loops[i].bodyRange.getBegin();}
 
@@ -153,9 +348,10 @@ void MyASTVisitor::farmDetect(){
                 //Check for L/Rvalue
                 analyzeLRLoop(i);
                 //Get stream generation stage
-                        
+                getPrivated(i);        
                 bool valid = getStreamGeneration(i);        
-
+                bool sinkFun = getSinkFunction(i);
+//                if(sinkFun) std::cout<<"TIENE FUNCION SINK\n";
                 //Global variable LValue
                 bool globallvalue = globalLValue(i);
 
@@ -192,7 +388,7 @@ void MyASTVisitor::farmDetect(){
                         hasgoto = true;
                 }
 		        
-        		bool empty = false;	
+        		bool empty = checkEmptyTask(i);	
         		if(Loops[i].numOps == 0 ) empty = true;
 //	            if(Loops[i].genStart == Loops[i].RangeLoc.getBegin() && Loops[i].genEnd == Loops[i].RangeLoc.getEnd() && !valid) empty = true;
  	
@@ -241,7 +437,7 @@ void MyASTVisitor::farmDetect(){
             			if(hasgoto) SSBefore<<"\tUses goto statement.\n";
 
 
-            			std::cout<<SSBefore.str()<<std::endl;
+            			//std::cout<<SSBefore.str()<<std::endl;
 
                 }
 		}

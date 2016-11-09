@@ -239,8 +239,14 @@ bool MyASTVisitor::checkPrivate(int i, ASTVar variable){
 bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &comments){
                 bool feedback = false;
                 //bool firstPosFeed = true;
-            for(auto refs = (Loops[i].VarRef.end()-1);refs != (Loops[i].VarRef.begin()-1);refs--){
-                  if((*refs).RefLoc<Loops[i].genStart.getRawEncoding()||(*refs).RefLoc>Loops[i].genEnd.getRawEncoding()){
+            for(auto refs = (Loops[i].VarRef.end()-1);refs != (Loops[i].VarRef.begin()-1);refs--){ 
+                  bool sinkIgnore = false;
+                  for( auto sinkVar = Loops[i].sinkZones.begin() ; sinkVar != Loops[i].sinkZones.end() ; sinkVar++){
+                      if((*refs).RefLoc >= (*sinkVar).second.first.getRawEncoding() &&
+                         (*refs).RefLoc <= (*sinkVar).second.second.getRawEncoding()) {sinkIgnore = true;/*std::cout<<"SINK IGNORE " <<std::endl;*/}
+                  }
+
+                  if(((*refs).RefLoc<Loops[i].genStart.getRawEncoding() || (*refs).RefLoc>Loops[i].genEnd.getRawEncoding()) && !sinkIgnore){
 			      bool memoryAccess = false;
 			      int mem= 0;
                        for(unsigned memAcc = 0; memAcc<Loops[i].MemAccess.size(); memAcc++){
@@ -253,8 +259,8 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
 
 
 
-			bool feedbackVAR=false;
-			bool local = false;
+             			bool feedbackVAR=false;
+            			bool local = false;
                         for(unsigned dec = 0;dec<Loops[i].VarDecl.size();dec++){
                              if(Loops[i].VarDecl[dec].Name == (*refs).Name
                                && Loops[i].VarDecl[dec].DeclLoc == (*refs).DeclLoc){
@@ -279,34 +285,34 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                               if((*refs).Name == Loops[i].privated[pv]) privated = true;
                         }
 
-			if(privated){
-				feedbackVAR= false;
-				std::cout<<"PRIVATED "<<(*refs).Name<<"\n";
-			}else{
-				std::cout<<"NO PRIVATED "<<(*refs).Name<<"\n";
+			            if(privated){
+            				feedbackVAR= false;
+			            	//std::cout<<"PRIVATED "<<(*refs).Name<<"\n";
+             			}/*else{
+			            	std::cout<<"NO PRIVATED "<<(*refs).Name<<"\n";
 
-			}
-
+             			}*/
+ 
                         if((*refs).cmpAssign&&!memoryAccess&&!local&&!privated) {
                                 feedbackVAR= true;
-				feedback=true;
+			                	feedback=true;
                         }
 
-			if((*refs).opModifier&&!memoryAccess&&!privated){
-				bool localVar = false;
+               			if((*refs).opModifier&&!memoryAccess&&!privated){
+				                bool localVar = false;
                                 for(unsigned dec = 0;dec<Loops[i].VarDecl.size();dec++){
                                       if(Loops[i].VarDecl[dec].Name == (*refs).Name
                                         && Loops[i].VarDecl[dec].DeclLoc == (*refs).DeclLoc){
                                           localVar=true;
                                       }
                                 }
-				if(!localVar){
-					feedbackVAR=true;
+        				if(!localVar){
+		        			feedbackVAR=true;
 			//		feedback= true;
-				}
+				       }
 			}
 
-			if((*refs).lvalue&&!privated&&!local){
+			if((*refs).lvalue&&!privated&&!local&&!sinkIgnore){
 				for(auto refs2 = (Loops[i].VarRef.end()-1); refs2 != (Loops[i].VarRef.begin()-1)  ;refs2--){
 					if((*refs).Name == (*refs2).Name && (*refs).DeclLoc == (*refs).DeclLoc && ((*refs2).RefLoc<Loops[i].genStart.getRawEncoding()||(*refs2).RefLoc>Loops[i].genEnd.getRawEncoding()) ){
 						/*bool memoryAccess = false;
@@ -326,7 +332,7 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                                                                  mem2=memAcc;
                                                           }
                                                 }
-                                                if(memoryAccess&&memoryAccess2){
+                                                if(memoryAccess&&memoryAccess2&&!sinkIgnore){
                                                 //      llvm::errs()<<"DOUBLE MEM REFERENCE";
                                                        // if((*refs2).lvalue){
                                                         feedbackVAR = false;
@@ -371,7 +377,7 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                                                         }
 							*/
                                                 }
-                                                if(refs==refs2&&(*refs).cmpAssign&&!memoryAccess){
+                                                if(refs==refs2&&(*refs).cmpAssign&&!memoryAccess&&!sinkIgnore){
                                                         feedbackVAR = true;
                                                 }
 
@@ -384,11 +390,11 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                                                         }
                                                 }
 						//if it's not local and is wrote then could produce side effects
-						if(!localVar&&(*refs).lvalue&&!memoryAccess){
+						if(!localVar&&(*refs).lvalue&&!memoryAccess&&!sinkIgnore){
                                                         feedbackVAR = true;
                                                 }
 
-						if((*refs2).lvalue&!memoryAccess&&localVar){
+						if((*refs2).lvalue&!memoryAccess&&localVar&&!sinkIgnore){
                                                         feedbackVAR = false;
                                                         //CHECK LINE
                                                         //If is in a for declaration.
@@ -424,7 +430,7 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                                                          }
                                                         //--------------------
                                                 }
-						if((*refs2).rvalue&&!memoryAccess){
+						if((*refs2).rvalue&&!memoryAccess&&!sinkIgnore){
                                                         feedbackVAR=true;
                                                         //posFeed = false;
                                                         //If is an L/Rvalue varible set as possible feedback
@@ -441,9 +447,9 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments, bool &com
                                 feedback=true;
                                 SSComments<<"//Feedback: "<<(*refs).Name;
                                 SSComments<<"\n";
-				std::cout<<"//Feedback: "<<(*refs).Name<<std::endl;
+				// std::cout<<"//Feedback: "<<(*refs).Name<<std::endl;
 
-                        }
+                     }
 
 		}
        }
@@ -618,7 +624,14 @@ bool MyASTVisitor::globalLValue(int i){
 
 	//Check if no global simple variable is wrote
 	for(auto refs = Loops[i].VarRef.begin(); refs!= Loops[i].VarRef.end(); refs++){
-        if(isBefore(Loops[i].genEnd, (*refs).RefSourceLoc) || isBefore( (*refs).RefSourceLoc, Loops[i].genStart)){ 
+        bool sinkIgnore = false;
+        for( auto sinkVar = Loops[i].sinkZones.begin() ; sinkVar != Loops[i].sinkZones.end() ; sinkVar++){
+            if((*refs).RefLoc >= (*sinkVar).second.first.getRawEncoding() &&
+               (*refs).RefLoc <= (*sinkVar).second.second.getRawEncoding()) sinkIgnore = true;
+        }
+
+
+        if(( Loops[i].genEnd.getRawEncoding() <= (*refs).RefSourceLoc.getRawEncoding() ||  (*refs).RefSourceLoc.getRawEncoding() < Loops[i].genStart.getRawEncoding()) && !sinkIgnore ){ 
 		bool containerVar = false;
 		for(unsigned memAcc = 0; memAcc < Loops[i].MemAccess.size(); memAcc++){
                         if(refs->Name == Loops[i].MemAccess[memAcc].Name && refs->RefLoc == Loops[i].MemAccess[memAcc].RefLoc){
@@ -627,7 +640,7 @@ bool MyASTVisitor::globalLValue(int i){
 		}
 		if(!containerVar){
 			if(refs->lvalue&&refs->globalVar){ 
-                std::cout<<"GLOBAL VARIABLE " <<(*refs).Name<<std::endl;
+                //std::cout<<"GLOBAL VARIABLE " <<(*refs).Name<<std::endl;
 				return true;	
 			}
 		}		
@@ -635,13 +648,22 @@ bool MyASTVisitor::globalLValue(int i){
 	}
 	//Check if functions uses global values
 	for(auto calls = Loops[i].fCalls.begin(); calls != Loops[i].fCalls.end(); calls++){
-        if(isBefore( Loops[i].genEnd, (*calls).EndLoc ) || isBefore((*calls).SLoc, Loops[i].genStart)){ 
+
+        bool sinkIgnore = false;
+        for( auto sinkVar = Loops[i].sinkZones.begin() ; sinkVar != Loops[i].sinkZones.end() ; sinkVar++){
+           if((*calls).SLoc.getRawEncoding() >= (*sinkVar).second.first.getRawEncoding() &&
+              (*calls).EndLoc.getRawEncoding() <= (*sinkVar).second.second.getRawEncoding()) sinkIgnore = true;
+        }
+
+
+        if(( Loops[i].genEnd.getRawEncoding() <= (*calls).SLoc.getRawEncoding()  || (*calls).SLoc.getRawEncoding() <  Loops[i].genStart.getRawEncoding() ) && !sinkIgnore ){ 
+
 		bool found = 0;
 		//Function is accesible 
 		for(auto fun = Functions.begin(); fun != Functions.end(); fun++){
 			if((*calls).Name == (*fun).Name){
 				if((*fun).globalsUsed.size()>0){
-                    std::cout<<"GLOBAL FUN" <<(*fun).Name<<std::endl;
+                    //std::cout<<"GLOBAL FUN" <<(*fun).Name<<std::endl;
 					return true;
 				}
 				found = 1;
@@ -655,7 +677,7 @@ bool MyASTVisitor::globalLValue(int i){
                    }
             }
             if(!found){
-                    std::cout<<"GLOBAL FUN" <<(*calls).Name<<std::endl;
+                    //std::cout<<"GLOBAL FUN" <<(*calls).Name<<std::endl;
 				return true;
             }
 		}

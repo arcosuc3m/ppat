@@ -123,6 +123,7 @@ std::vector<std::string> &stream);
   void farmDetect();
   bool getStreamGeneration(int i);
   std::vector< ASTVar > getOtherGenerations(int i, SourceLocation &fWrite, SourceLocation &lWrite);
+  bool checkEmptyTask(int i);
   //REDUCE DETECTOR
   bool checkFeedback(int i, std::vector<std::string> &feedbackVars, std::vector<std::string> &operators);
   bool reduceOperation(std::vector<std::string> feedbackVars, std::vector<std::string> outputs, std::vector<std::string> &reduceVars);
@@ -137,7 +138,9 @@ std::vector<std::string> &stream);
   void PPATtoGRPPI();
   void writeGenFunc(ASTCondition cond, std::stringstream & GenFunc,clang::SourceLocation e, clang::SourceLocation b);
   std::string getNext(clang::SourceLocation & current,ASTCondition cond, clang::SourceLocation e );
+  void getPrivated(int i);
   void getStreamGeneratorOut (int i );
+  bool getSinkFunction(int i);
   
   //SEARCH VARIABLES
   void searchVars(Stmt *s, ASTLoop &Loop); 
@@ -257,7 +260,7 @@ std::vector<std::string> &stream);
              }
              getCondition(condition, Loop);
              /*= s->getCond();*/
-             std::cout<<"CONDITION \n";
+             //std::cout<<"CONDITION \n";
              condition->dump();
         }
 		//If is a declstmt is the iterator
@@ -362,15 +365,15 @@ std::vector<std::string> &stream);
 	return false;
   }
   bool getIterator(Stmt * s, ASTLoop & currentLoop){
-       std::cout<<"GET ITERATOR\n";
+       //std::cout<<"GET ITERATOR\n";
        if(s!=nullptr){
        if(isa<DeclStmt>(s)){
-		std::cout<<"DECL\n";
+//		std::cout<<"DECL\n";
              DeclStmt *dec = cast<DeclStmt>(s);
              for(auto decIt = dec->decl_begin();decIt!=dec->decl_end();decIt++){
                  if((*decIt)!=NULL){
                       if(VarDecl *var = cast<VarDecl>((*decIt))){
-			std::cout<<"VAR NAME: "<< var->getNameAsString()<<"\n";
+//			std::cout<<"VAR NAME: "<< var->getNameAsString()<<"\n";
                         unsigned location = var->getLocStart().getRawEncoding () ;
                         currentLoop.Iterator.Name= var->getNameAsString();
                         currentLoop.Iterator.type = clang::QualType::getAsString(var->getType().split());                                                                       currentLoop.Iterator.DeclLoc = location;
@@ -382,11 +385,11 @@ std::vector<std::string> &stream);
        //     searchVars(s,Kernel);
        }
        if(isa<DeclRefExpr>(s)){
-		std::cout<<"REF\n";
+//		std::cout<<"REF\n";
 		 DeclRefExpr *ref = cast<DeclRefExpr>(s);
 		 if(ref->getDecl()!=NULL){
 			if(VarDecl *var = dyn_cast<clang::VarDecl>(ref->getDecl())){
-				std::cout<<"VAR NAME: "<< var->getNameAsString()<<"\n";
+//				std::cout<<"VAR NAME: "<< var->getNameAsString()<<"\n";
 
 				currentLoop.Iterator.Name= var->getNameAsString();
 				currentLoop.Iterator.type = clang::QualType::getAsString(var->getType().split());

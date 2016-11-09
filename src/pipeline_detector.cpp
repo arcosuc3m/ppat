@@ -1168,7 +1168,7 @@ bool MyASTVisitor::AnalyzeLoops(){
                auto lineEnd = SM.getLineNumber(SM.getDecomposedLoc(Loops[i].RangeLoc.getEnd()).first,Loops[i].RangeLoc.getEnd().getRawEncoding());
         	              //  auto fileName = SM.getFileEntryForID(SM.getDecomposedLoc(Loops[i].RangeLoc.getEnd()).first)->getName();
 				//llvm::errs()<<"PIPELINE FOUND ON: "<<fileName<<":"<<lineStart<<"\n";
-			   std::cout<<stages<<" "<<fileName<<":"<<lineStart<<":"<<lineEnd<<"\n";
+			   //std::cout<<stages<<" "<<fileName<<":"<<lineStart<<":"<<lineEnd<<"\n";
      		   pipelinesCounter++;
 
 			}

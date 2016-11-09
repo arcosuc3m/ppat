@@ -26,7 +26,7 @@ void MyASTVisitor::searchOperator(Stmt * s, T& Loop){
            ASTOperators newOp;
            newOp.Name =  bin->getOpcodeStr().str();
            newOp.Location = bin->getOperatorLoc();
-           std::cout<<" NOMBRE : " << newOp.Name << " LOCATION : " << bin->getLocStart().getRawEncoding();
+//           std::cout<<" NOMBRE : " << newOp.Name << " LOCATION : " << bin->getLocStart().getRawEncoding();
            newOp.type = bin->getType().getAsString();
            Loop.ops.push_back(newOp);
         }
