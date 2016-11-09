@@ -1,7 +1,5 @@
 fprintf 0:U
 fscanf 0:U
-basic_ostream.operator<< 0:U
-basic_istream.operator>> 0:U
 strtok 0:U
 isInteger 0:U
 sprintf 0:U
@@ -26,3 +24,6 @@ vranlc 1:U 3:U
 operator>> 0:U
 getline 0:U 1:U
 basic_string.operator= 0:U
+
+basic_ostream.operator<< 0:U
+basic_istream.operator>> 0:U

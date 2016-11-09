@@ -80,6 +80,9 @@ struct ASTLoop{
         clang::SourceLocation genStart;
         clang::SourceLocation genEnd;
         std::map<std::string, std::string> genVar;
+        std::map<std::string, std::string> taskVar;
+        std::map<std::string, ASTVar> privatedVars;
+        std::map<std::string, std::pair<clang::SourceLocation, clang::SourceLocation> > sinkZones;
         bool genBefore = false;
         bool genAfter = false;
 
