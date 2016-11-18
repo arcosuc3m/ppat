@@ -29,7 +29,7 @@ void MyASTVisitor::PPATtoGRPPI(){
             clang::SourceLocation genEnd = Loops[i].genEnd;
             clang::SourceLocation gb;
             clang::BeforeThanCompare<clang::SourceLocation> isBefore(sm);
-             
+            //std::cout<<"FINAL LOCATIONS : "<< genBegin.getRawEncoding() << " "<<genEnd.getRawEncoding() << std::endl; 
             //FIXME: Multiple generation code sections
             //If the generation lambda is not in the loop header 
             if(genBegin!=Loops[i].RangeLoc.getBegin()&&genEnd!=Loops[i].RangeLoc.getBegin()){           
@@ -48,6 +48,7 @@ void MyASTVisitor::PPATtoGRPPI(){
                 genBegin = auxBegin;
                 if(endStmt) genEnd = Loops[i].RangeLoc.getEnd();
                 gb = genBegin;
+                //std::cout<<"HERE : " << gb.getRawEncoding() << " " << genEnd.getRawEncoding()<<std::endl;
                 //Introduces the code corresponding to the stream generation located in the loop body
                 GenLambda<< std::string(sm.getCharacterData(gb), sm.getCharacterData(genEnd) - sm.getCharacterData( gb));
             }else{
@@ -207,8 +208,16 @@ void MyASTVisitor::PPATtoGRPPI(){
                   }
                   if(isTask){ 
                       TaskLambda <<"\n";
+                      if(stmt+1 !=  Loops[i].stmtLoc.end()){
+                      auto aux = stmt;
+                      aux++;
                       TaskLambda << std::string(sm.getCharacterData((*stmt).getBegin() ), 
-                              sm.getCharacterData( clang::Lexer::getLocForEndOfToken( (*stmt).getEnd()  , 0, sm, lopt) ) - sm.getCharacterData( (*stmt).getBegin() ) );
+                              sm.getCharacterData( (*aux).getBegin()) - sm.getCharacterData( (*stmt).getBegin() ) );
+                      }else{
+                      TaskLambda << std::string(sm.getCharacterData((*stmt).getBegin() ), 
+                              sm.getCharacterData( Loops[i].bodyRange.getEnd()) - sm.getCharacterData( (*stmt).getBegin() ) );
+
+                      }
                  }
 
             }

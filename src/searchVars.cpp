@@ -102,19 +102,20 @@ bool MyASTVisitor::varsUnaryOperator(Stmt *s, Struct &Loop){
 			||uo->getOpcodeStr(uo->getOpcode()).find("++")
 			||uo->getOpcodeStr(uo->getOpcode()).find("--")){
                         if(ref->getDecl()!=NULL){
-				if(VarDecl *var = dyn_cast<clang::VarDecl>(ref->getDecl())){
-					ASTVar newVarRef;
-					newVarRef.Name = var->getNameAsString();
-					//these operator can produce feedbacks.
+				           if(VarDecl *var = dyn_cast<clang::VarDecl>(ref->getDecl())){
+                   					ASTVar newVarRef;
+                 					newVarRef.Name = var->getNameAsString();
+			      		//these operator can produce feedbacks.
 					newVarRef.lvalue = true;
                                         newVarRef.rvalue = true;
-					newVarRef.opModifier = true;
+             					newVarRef.opModifier = true;
                                         newVarRef.xvalue = uo->isXValue();
                                         newVarRef.glvalue = uo->isGLValue();
 					//Get reference and declaration location
                                         unsigned location = var->getLocStart().getRawEncoding () ;
                                         newVarRef.DeclLoc = location;
                                         newVarRef.RefLoc = ref->getLocStart().getRawEncoding ();
+	                                        newVarRef.RefSourceLoc = ref->getLocStart();
                                   //Get variable type
                                         newVarRef.type = clang::QualType::getAsString(var->getType().split());
                                         newVarRef.globalVar = var->hasGlobalStorage();

@@ -234,7 +234,7 @@ std::vector< ASTVar > MyASTVisitor::getOtherGenerations(int i, SourceLocation &f
             if((*priv).first == (*var).Name) privated = true;
          }*/
          if( (*var).lvalue && (*var).RefLoc >= fWrite.getRawEncoding() 
-              && lWrite.getRawEncoding() > (*var).RefLoc && !isLocal && !privated ){ 
+              && lWrite.getRawEncoding() > (*var).RefLoc && !isLocal && !privated ){
             modified_variables.push_back((*var));  
          }
      }
@@ -279,6 +279,7 @@ bool MyASTVisitor::getStreamGeneration(int i){
      clang::BeforeThanCompare<clang::SourceLocation> isBefore(sm);
      for(auto cond = condition_variables.begin(); cond != condition_variables.end(); cond++){
         if((*cond).lvalue){
+           // std::cout<< "CONDITION : " << (*cond).Name << std::endl;
             if(isBefore(firstWrite, (*cond).RefSourceLoc)) { firstWrite = (*cond).RefSourceLoc; }
             if(isBefore((*cond).RefSourceLoc,lastWrite)) lastWrite = (*cond).RefSourceLoc;
         }
@@ -291,13 +292,21 @@ bool MyASTVisitor::getStreamGeneration(int i){
          lastWrite = lWrite;
          bool endStmt = true;
          for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
-            if( isBefore(lWrite, (*stmt).getBegin())){ lWrite = (*stmt).getBegin() ; endStmt = false; break;  }
+            if( lWrite.getRawEncoding() < (*stmt).getBegin().getRawEncoding() ){ lWrite = (*stmt).getBegin() ; endStmt = false; break;  }
          }
          for(auto stmt = Loops[i].stmtLoc.end()-1 ; stmt != Loops[i].stmtLoc.begin()-1; stmt--){
-            if( isBefore( (*stmt).getEnd(), fWrite)){ fWrite = (*(stmt+1)).getBegin(); break;}
+            if( (*stmt).getEnd().getRawEncoding() <= fWrite.getRawEncoding() ){ fWrite = (*(stmt+1)).getBegin(); break;}
          }
          if(endStmt) lWrite = Loops[i].RangeLoc.getEnd();
+         //std::cout<<"LOCATIONS : " << fWrite.getRawEncoding() << " "<<lWrite.getRawEncoding() << std::endl;
+         //for(auto cond = condition_variables.begin(); cond != condition_variables.end();cond++){
+              //std::cout<<"CONDITION VARIABLES : " << (*cond).Name<<" "<<(*cond).lvalue<< " "<<(*cond).RefSourceLoc.getRawEncoding() <<std::endl;
+         //}
+
          condition_variables = getOtherGenerations(i, fWrite, lWrite);
+         //for(auto cond = condition_variables.begin(); cond != condition_variables.end();cond++){
+         //     std::cout<<"CONDITION VARIABLES : " << (*cond).Name<<" "<<(*cond).lvalue<< std::endl;
+         //}
      }while(fWrite.getRawEncoding() != firstWrite.getRawEncoding() && lWrite.getRawEncoding() != lastWrite.getRawEncoding());
 
      firstWrite = fWrite;
@@ -321,8 +330,10 @@ bool MyASTVisitor::getStreamGeneration(int i){
   //   }
 
      //If the generation variables are not used in the compute or used after and before their modification, the loop cannot be transformed into a farm pattern. 
+     //std::cout<<"AFTER : " << after << " BEFORE: "<<before << std::endl;
+
      if(after&&before){ Loops[i].genStart = Loops[i].bodyRange.getBegin(); Loops[i].genEnd = Loops[i].bodyRange.getBegin();}
-     if(!after&&!before){Loops[i].genStart = Loops[i].bodyRange.getBegin(); Loops[i].genEnd = Loops[i].bodyRange.getBegin();}
+     //if(!after&&!before){Loops[i].genStart = Loops[i].bodyRange.getBegin(); Loops[i].genEnd = Loops[i].bodyRange.getBegin();}
 
      return true;
 }
@@ -427,20 +438,24 @@ void MyASTVisitor::farmDetect(){
                 }else{
 
                         std::stringstream SSBefore;
-                        auto line = SM.getLineNumber(SM.getDecomposedLoc(Loops[i].RangeLoc.getBegin()).first,Loops[i].RangeLoc.getBegin().getRawEncoding());
-                        SSBefore<< "== INVALID PATTERN == Invalid farm on "<<fileName<<":"<<line<<"\n";
-                        if(feedback) SSBefore<<"\tFeedback.\n ";
-                        if(globallvalue) SSBefore<<"\tWrite on a global variable.\n";
-            			if(hasreturn) SSBefore<<"\tUses return statement.\n";
-            			if(empty) SSBefore<<"\tEmpty loop.\n";
-            			if(hasbreak) SSBefore<<"\tUses break statement.\n";
-            			if(hasgoto) SSBefore<<"\tUses goto statement.\n";
+//                        auto line = SM.getLineNumber(SM.getDecomposedSpellingLoc(Loops[i].RangeLoc.getBegin()).first,Loops[i].RangeLoc.getBegin().getRawEncoding());
+
+                        auto line = SM.getPresumedLineNumber(Loops[i].RangeLoc.getBegin());
+                        //SSBefore<< "== INVALID PATTERN == Invalid farm on "<<fileName<<":"<<line<<"\n";
+                        SSBefore << "== Loop in "<<fileName<<":"<<line<< " does not match a farm pattern!\n";
+                        if(feedback) SSBefore<<"\tFeedback detected.\n ";
+                        if(globallvalue) SSBefore<<"\tFound a write on a global variable.\n";
+            			if(hasreturn) SSBefore<<"\tFound a return statement.\n";
+            			if(empty) SSBefore<<"\tFound no parallelizable statements.\n";
+            			if(hasbreak) SSBefore<<"\tFound break statement.\n";
+            			if(hasgoto) SSBefore<<"\tFound goto statement.\n";
 
 
-            			//std::cout<<SSBefore.str()<<std::endl;
+            			std::cout<<SSBefore.str();
 
                 }
 		}
 	}
-	std::cout<<"FARMS FOUND: "<<numFarm<<"\n";
+	std::cout<<"Farm patterns found: "<<numFarm;
+    std::cout<<std::flush;
 }

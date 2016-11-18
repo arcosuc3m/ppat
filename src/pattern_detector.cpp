@@ -261,7 +261,6 @@ std::vector<std::string> &stream);
              getCondition(condition, Loop);
              /*= s->getCond();*/
              //std::cout<<"CONDITION \n";
-             condition->dump();
         }
 		//If is a declstmt is the iterator
 		if(isa<DeclStmt>(s)){
@@ -647,15 +646,15 @@ std::vector<std::string> &stream);
   }
   //Analyze the colected data on the second iteration and destroys the visitor
   ~MyASTVisitor(){
-	llvm::errs()<<"---STARTING ANALYSIS---\n";
 	if(!firstIteration){
-		llvm::errs()<<"MAP DETECTION \n";
+//	    llvm::errs()<<"---STARTING ANALYSIS---\n";
+		std::cout<<"\n\nStarting map detection phase... \n";
 		if(MapOption) mapDetect();
-		llvm::errs()<<"FARM DETECTION \n";
+		std::cout<<"\n\nStarting farm detection phase... \n";
 		if(FarmOption) farmDetect();
-		llvm::errs()<<"REDUCE DETECTION\n";
+		std::cout<<"\n\nStarting reduce detection phase...\n";
 		if(ReduceOption) reduceDetect();
-		llvm::errs()<<"PIPELINE DETECTION \n";
+		std::cout<<"\n\nStarting pipeline detection phase... \n";
 		if(PipelineOption)AnalyzeLoops();
 		if(CleanOption)	clean();
 		if(!PipelineOption) PPATAnnotate();
@@ -663,7 +662,7 @@ std::vector<std::string> &stream);
             PPATtoGRPPI();
         }
 		TheRewriter.overwriteChangedFiles();
-		llvm::errs()<<"---ANALYSIS FINISHED---\n";
+//		llvm::errs()<<"---ANALYSIS FINISHED---\n";
 	}
   }
 
@@ -703,14 +702,16 @@ public:
   MyFrontendAction() {}
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
-    llvm::errs() << "** EndSourceFileAction for: "
+    if(!firstIteration)   
+        std::cout << "** EndSourceFileAction for: "
                  << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
     auto consumer = getCompilerInstance().getASTConsumer();
     consumer.PrintStats();
   }
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override {
-    llvm::errs() << "** Creating AST consumer for: " << file << "\n";
+    if(!firstIteration)   
+       std::cout << "** Creating AST consumer for: " << file.str() << "\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     return llvm::make_unique<MyASTConsumer>(TheRewriter);
 }

@@ -52,7 +52,7 @@ $(info -----------------------------------------------)
 # higher or Clang 3.2 and higher are recommended. Best of all, if you build LLVM
 # from sources, use the same compiler you built LLVM with.
 CXX := g++
-CXXFLAGS := -fno-rtti -O0 -g 
+CXXFLAGS := -fno-rtti -O0 -g -w 
 #CXXFLAGS := -fno-rtti -O3  
 PLUGIN_CXXFLAGS := -fpic
 

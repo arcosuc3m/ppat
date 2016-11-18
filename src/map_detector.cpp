@@ -716,7 +716,7 @@ bool MyASTVisitor::check_break(int i){
 
 void MyASTVisitor::mapDetect(){
         //Analize function declarations with bodies
-        analyzeCodeFunctions();
+    analyzeCodeFunctions();
 	int numMaps = 0;
         //int numpipelines = 0;
 	for(int i = 0; i < numLoops;i++){
@@ -733,27 +733,28 @@ void MyASTVisitor::mapDetect(){
 		llvm::errs()<<"HERE 5\n";
 */
 		auto fileName = Loops[i].FileName;
-                auto currfile = SM.getFileEntryForID(SM.getMainFileID())->getName();
+        //auto currfile = SM.getFileEntryForID(SM.getMainFileID())->getName();
+        auto currfile = fileName;
 //		llvm::errs()<<"END FILE CHECKING\n";
 
                 //Annotate only if the loop is in the current file. 
-                if(fileName == currfile){
+        if(fileName == currfile){
 
 		//llvm::errs()<<"LOOP: "<<i<<"\n"; 
-		std::stringstream SSComments;		
-		bool comments = false;
-		//Analyze function calls
-		analyzeCall(i);
-		//Check for L/Rvalue
-                analyzeLRLoop(i);
-                //Global variable LValue
-                bool globallvalue = globalLValue(i);
+	    	std::stringstream SSComments;		
+		    bool comments = false;
+	    	//Analyze function calls
+     		analyzeCall(i);
+	    	//Check for L/Rvalue
+            analyzeLRLoop(i);
+            //Global variable LValue
+            bool globallvalue = globalLValue(i);
 
-		std::vector<std::string> outputs;
-                std::vector<std::string> inputs;
+		    std::vector<std::string> outputs;
+            std::vector<std::string> inputs;
 
-		//Get inputs and outputs
-		getMapIO(inputs, outputs,i);
+     		//Get inputs and outputs
+	    	getMapIO(inputs, outputs,i);
 		//DEBUG----------
 /*		llvm::errs()<<"INPUTS:\n";
 		for(int debug = 0;debug < inputs.size(); debug ++ ){
@@ -768,12 +769,12 @@ void MyASTVisitor::mapDetect(){
 		//------------END DEBUG		
 
 		
-                std::vector<std::string> outStreams;
-                std::vector<std::string> inStreams;
+            std::vector<std::string> outStreams;
+            std::vector<std::string> inStreams;
 
 		//Get IO data streams
-		getDataStreams(inputs, inStreams,i);
-		getDataStreams(outputs, outStreams,i);
+		   getDataStreams(inputs, inStreams,i);
+    	   getDataStreams(outputs, outStreams,i);
 	
 		//DEBUG
 /*		llvm::errs()<<"INSTREAMS:\n";
@@ -789,23 +790,23 @@ void MyASTVisitor::mapDetect(){
                 //------------END DEBUG  
 		
                 //Check feedback        
-                bool feedback = checkFeedback(i,SSComments,comments);
+            bool feedback = checkFeedback(i,SSComments,comments);
 
 		//Get output data stream dependencies
-		getStreamDependencies(outStreams,i);
+    		getStreamDependencies(outStreams,i);
 
 		//Check if in data streams are RValue 
 
 		//Check if input streams uses iterator related positions
 	
 		//Check if output streams are only used as write or read in the same position. 
-		checkMemAccess(outStreams,i);	
+	    	checkMemAccess(outStreams,i);	
 		//TODO: To be deleted
 		//Check if output depends only on one data stream input
 		//This is not true 
 		//bool invalid = checkMapDependencies(inStreams, outStreams,i); 
-		bool invalid = true;
-		if(outputs.size()>0&&inputs.size()>0){
+		    bool invalid = true;
+     		if(outputs.size()>0&&inputs.size()>0){
 			invalid = false;
 		}
 		if(Loops[i].type == 1){
@@ -842,19 +843,26 @@ void MyASTVisitor::mapDetect(){
                 }else{
                         std::stringstream SSBefore;
                         //SourceManager &SM = TheRewriter.getSourceMgr();
-                        auto line = SM.getLineNumber(SM.getDecomposedLoc(Loops[i].RangeLoc.getBegin()).first,Loops[i].RangeLoc.getBegin().getRawEncoding());
-                 //       auto fileName = SM.getFileEntryForID(SM.getDecomposedLoc(Loops[i].RangeLoc.getBegin()).first)->getName();
-                        SSBefore<< "== INVALID PATTERN == Invalid map on "<<fileName<<":"<<line<<"\n";
-                        if(feedback) SSBefore<<"\tFeedback\n ";
+                        auto line = SM.getPresumedLineNumber(Loops[i].RangeLoc.getBegin());
+                 
+//       auto fileName = SM.getFileEntryForID(SM.getDecomposedLoc(Loops[i].RangeLoc.getBegin()).first)->getName();
+                        SSBefore << "== Loop in "<<fileName<< ":"<<line<<" does not match a map pattern!\n";
+
+                        if(feedback) SSBefore<<"\tFeedback detected.\n ";
                         if(invalid)  SSBefore<<"\tOutput does not depend on any Input\n";
-                        if(globallvalue) SSBefore<<"\tWrite on a global variable\n";
-			if(hasreturn) SSBefore<<"\tUses return statement\n";
+                        if(globallvalue) SSBefore<<"\tFound a write on a global variable.\n";
+		             	if(hasreturn) SSBefore<<"\tFound a return statement.\n";
+                        if(hasbreak) SSBefore<<"\tFound break statement.\n";
+                        if(hasgoto) SSBefore<<"\tFound goto statement.\n";
+
+                        std::cout<<SSBefore.str();
 
 		}
 //		else llvm::errs()<<"LOOP "<<i<<" IS NOT A MAP\n";
 		}
 	}
-	std::cout<<"MAPS FOUND : "<<numMaps<<"\n";
+	std::cout<<"Map patterns detected : "<<numMaps;
+    std::cout<<std::flush;
 }
 
 

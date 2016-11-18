@@ -243,18 +243,30 @@ void MyASTVisitor::reduceDetect(){
                 analyzeLRLoop(i);
                 //Global variable LValue : Check if modified globals (potential side effects)
                 //bool globallvalue = false;
+       auto fileName = Loops[i].FileName;
 
-                std::vector<std::string> outputs;
-                std::vector<std::string> inputs;
+       std::vector<std::string> outputs;
+       std::vector<std::string> inputs;
 
                 //Get inputs and outputs
-                getMapIO(inputs, outputs,i);
+        getMapIO(inputs, outputs,i);
 		std::vector<std::string> feedbackVars;
 		std::vector<std::string> operators;
 		//Check input memory access	
 		
                 //Check feedback 
                 bool feedback = checkFeedback(i,feedbackVars, operators);
+
+       bool hasreturn = false;
+       if(Loops[i].Returns.size()>0){
+               hasreturn=true;
+       }
+       bool hasbreak = check_break(i);
+       bool hasgoto = false;
+       if(Loops[i].Gotos.size()>0){
+               hasgoto = true;
+        }
+
 
 /*
 		for(unsigned dbg = 0 ; dbg < feedbackVars.size(); dbg++){
@@ -270,7 +282,7 @@ void MyASTVisitor::reduceDetect(){
 			if((*funs).Name.find("fscanf")!=std::string::npos) valid = false;
 		}	
 	
-                if(valid&&!feedback){
+        if(valid&&!feedback){
 //			std::cout<<"======= REDUCE PATTERN DETECTED =======\n";
 			Loops[i].reduce = true;
 			numreduce++;
@@ -316,9 +328,26 @@ void MyASTVisitor::reduceDetect(){
 	                        if(!omp) TheRewriter.InsertText(Loops[i].RangeLoc.getBegin(), SSBefore.str(), true, true);
 			
 			 //llvm::errs()<<"\nLOOP "<<i<<" IS A REDUCE\n";
-		}
+		}else{
+            std::stringstream SSBefore;
+           SourceManager &SM = TheRewriter.getSourceMgr();
+
+            auto line = SM.getPresumedLineNumber(Loops[i].RangeLoc.getBegin());
+            SSBefore << "== Loop in "<<fileName<<":"<<line<< " does not match a reduce pattern!\n";
+            if(feedback) SSBefore<<"\tFeedback detected.\n ";
+//            if(globallvalue) SSBefore<<"\tFound a write on a global variable.\n";
+            if(hasreturn) SSBefore<<"\tFound a return statement.\n";
+//            if(empty) SSBefore<<"\tFound no parallelizable statements.\n";
+            if(hasbreak) SSBefore<<"\tFound break statement.\n";
+            if(hasgoto) SSBefore<<"\tFound goto statement.\n";
+            if(!valid) SSBefore<<"\tNo reduce operation detected\n";
+
+            std::cout<<SSBefore.str();
+
+        }
         //        else llvm::errs()<<"LOOP "<<i<<" IS NOT A REDUCE\n";
         }
-		std::cout<<"REDUCE DETECTED: "<<numreduce<<"\n";
+		std::cout<<"Reduce patterns detected: "<<numreduce;
+        std::cout<<std::flush;
 }
 

@@ -462,33 +462,33 @@ void MyASTVisitor::stageDetection(int i, int &stages,  std::vector<unsigned> &st
 		unsigned bfLoc = 0;
 		//For each function
 		for(auto funs = Loops[i].fCalls.begin();funs!=Loops[i].fCalls.end();funs++){
-                        bool noOut=false;
-                        bool insideLoop = false;
+            bool noOut=false;
+            bool insideLoop = false;
 			//Eclude functions inside intern loops
-                        for(auto LoopSR = Loops[i].InternLoops.begin();LoopSR != Loops[i].InternLoops.end(); LoopSR++){
-                                if((*funs).SLoc.getRawEncoding() > (*LoopSR).getBegin().getRawEncoding()&&
-                                (*funs).SLoc.getRawEncoding() < (*LoopSR).getEnd().getRawEncoding()){
-                                        insideLoop = true;
-                                }
-
-                        }
-			clang::SourceRange IfLoc;
+            for(auto LoopSR = Loops[i].InternLoops.begin();LoopSR != Loops[i].InternLoops.end(); LoopSR++){
+               if((*funs).SLoc.getRawEncoding() > (*LoopSR).getBegin().getRawEncoding()&&
+                 (*funs).SLoc.getRawEncoding() < (*LoopSR).getEnd().getRawEncoding()){
+                      insideLoop = true;
+                 }
+            }
+     		clang::SourceRange IfLoc;
 			clang::SourceLocation ifEnd;
 			bool insideCond = false;
 			int CondIt = 0;
 			for(auto Cond = Loops[i].ConditionalsStatements.begin();Cond != Loops[i].ConditionalsStatements.end(); Cond++){
-                                if((*funs).SLoc.getRawEncoding() > (*Cond).getBegin().getRawEncoding()&&
-                                (*funs).SLoc.getRawEncoding() < (*Cond).getEnd().getRawEncoding()){
-                                        insideCond = true;
+                if((*funs).SLoc.getRawEncoding() > (*Cond).getBegin().getRawEncoding()&&
+                   (*funs).SLoc.getRawEncoding() < (*Cond).getEnd().getRawEncoding()){
+ 
+           //         std::cout<<(*funs).Name<<" is INSIDE A CONDITION\n";
+                    insideCond = true;
 					IfLoc = (*Cond);
 					ifEnd = Loops[i].CondEnd[CondIt];	
-                                }
-				CondIt++;
-
-                        }
+                }
+     			CondIt++;
+            }
 	
-                        //If has outputs
-                        if(!noOut&&!insideLoop){
+            //If has outputs
+            if(!noOut&&!insideLoop){
                                 //Ignore operators as stage limit
                                 if((*funs).Name.find("operator")==std::string::npos){
                                         //Split loops in stages
@@ -1039,6 +1039,7 @@ bool MyASTVisitor::AnalyzeLoops(){
 	int feqm = 0;
 	//Counter farms = pipes
 	int feqp = 0;
+ 	int nestedFarm = 0;
 
 	int numpipelines = 0;
 //	std::vector<int> dictionaryAdds;
@@ -1103,7 +1104,6 @@ bool MyASTVisitor::AnalyzeLoops(){
 		getStageIO(inputs, outputs,stages,i,stagesLocEnds);
 		std::vector<bool> farmstage(stagesLocEnds.size());
 		checkFarmStages(stagesLocEnds,i,farmstage);
- 	
 		std::vector<std::string> stream;
 		//llvm::errs()<<"GET STREAM\n";
 		getPipelineStream(inputs,outputs,stages,stream);
@@ -1172,7 +1172,7 @@ bool MyASTVisitor::AnalyzeLoops(){
      		   pipelinesCounter++;
 
 			}
-			if(stream.size()>0){
+	/*		if(stream.size()>0){
 				SSBefore << ", rph::stream(";
 				for(auto iter = stream.begin();iter!= stream.end();iter++){
 					SSBefore << (*iter);
@@ -1180,20 +1180,23 @@ bool MyASTVisitor::AnalyzeLoops(){
 						SSBefore << ",";
 				}
 				SSBefore << ")";
-			}
+			}*/
 			SSBefore << "]]\n";
      			TheRewriter.InsertText(Loops[i].RangeLoc.getBegin(), SSBefore.str(), true, true);
 			
-                //moveDeclarations(i,declarations);
+            //moveDeclarations(i,declarations);
 			//PRINT STAGES
+           
 			for(int st = 0; st<=stages;st++){
 				std::stringstream SSStage;
 				//llvm::errs()<<stages<<" "<<stagesLocEnds.size()<<" "<<stagesLocEnds[st]<<"\n";
 				if(st!=0) SSStage <<"\n}";
 				if(st==0) SSStage << declarations.str();
 				SSStage<<"\n\n[[rph::stage("<<st<<"), rph::pipelineid("<<numpipelines<<")";
-				if(farmstage[st]) 
+				if(farmstage[st]) {
 					SSStage<<", rph::farm";
+                    nestedFarm++;
+                }
 				if(inputs[st].size()>0){
 					SSStage<< ", rph::in(";
 					for(auto in = inputs[st].begin();in!= inputs[st].end();in++){
@@ -1204,10 +1207,10 @@ bool MyASTVisitor::AnalyzeLoops(){
 					SSStage<<")";
 				}
 				 if(outputs[st].size()>0){
-                                        SSStage<< ", rph::out(";
-                                        for(auto out = outputs[st].begin();out!= outputs[st].end();out++){
-                                                SSStage<<(*out);
-                                                if(out!=outputs[st].end()-1)
+                        SSStage<< ", rph::out(";
+                        for(auto out = outputs[st].begin();out!= outputs[st].end();out++){
+                                 SSStage<<(*out);
+                                               if(out!=outputs[st].end()-1)
                                                         SSStage<<",";
                                         }                                
                                         SSStage<<")";                   
@@ -1218,14 +1221,16 @@ bool MyASTVisitor::AnalyzeLoops(){
 				}else{
 
 					auto StageLocation = SourceLocation::getFromRawEncoding(stagesLocEnds[st-1]);
-                                        auto loc = SM.getDecomposedLoc(StageLocation);
-                                        auto line = SM.getLineNumber(loc.first,StageLocation.getRawEncoding());
-                                        auto fEntry = SM.getFileEntryForID(loc.first);
-                                        auto col = 1;
-                                        auto beginLine = SM.translateFileLineCol(fEntry,(line+1),col);
+//                    auto loc = SM.getDecomposedLoc(StageLocation);
+//                    auto line = SM.getLineNumber(loc.first,StageLocation.getRawEncoding());
+//                   auto fEntry = SM.getFileEntryForID(loc.first);
+//                  auto col = 1;
+//                    auto beginLine = SM.translateFileLineCol(fEntry,(line+1),col);
+
+                    
 
 
-                                        TheRewriter.InsertText(beginLine, SSStage.str(), true, true);
+                    TheRewriter.InsertText(StageLocation, SSStage.str(), true, true);
 
 //					auto StageLocation = SourceLocation::getFromRawEncoding(stagesLocEnds[st-1]); 
 //					TheRewriter.InsertText(StageLocation, SSStage.str(), true, true);
@@ -1248,14 +1253,21 @@ bool MyASTVisitor::AnalyzeLoops(){
 		}else{
 			//If not satisfied
 			 // Add comment before
-                        std::stringstream SSBefore;
-                        SSBefore << "//It isn't a Pipeline \n";
-			SSBefore << SSComments.str()<<" ";
+            std::stringstream SSBefore;
+            std::stringstream ErrorMessage;
+            auto line = SM.getPresumedLineNumber(Loops[i].RangeLoc.getBegin());
+
+            ErrorMessage << "== Loop in "<<fileName<<":"<<line<< " does not match a pipeline pattern!\n";
+
+			ErrorMessage << SSComments.str()<<" ";
 			//Insert why is not a pipeline
-			if(Loops[i].numOps<=1) SSBefore<<"//Not enough compute\n";			
-			if(!isUsed) SSBefore<<"//Lvalue not used\n";
-			if(stages<=1) SSBefore<<"//Less than 2 stages\n";
-			if(globallvalue) SSBefore<<"//GLOBAL VALUE USED\n";
+//			if(Loops[i].numOps<=1) ErrorMessage<<"\tNot enough compute\n";			
+			if(!isUsed) ErrorMessage<<"\tNo output from previous stage is used as input\n";
+			if(stages<=1||Loops[i].numOps<=1) ErrorMessage<<"\tFound less than 2 stages\n";
+			if(globallvalue) ErrorMessage<<"\tFound a write on a global variable.\n";
+            std::cout<<ErrorMessage.str();
+
+
 			if(Loops[i].map||Loops[i].farm){
 				SSBefore<<"[[";
 				if(Loops[i].map){
@@ -1271,44 +1283,41 @@ bool MyASTVisitor::AnalyzeLoops(){
 					feqm ++;
 				}
 				
-                                //ADD MAP I/O
-                                if(Loops[i].inputs.size()>0){
-                                        SSBefore<<", rph::in(";
-                                        for(unsigned in = 0; in<Loops[i].inputs.size();in++){
-                                                 SSBefore<<Loops[i].inputs[in];
-                                                 if(in!=Loops[i].inputs.size()-1){
-                                                        SSBefore<<",";
-                                                 }
-                                        }
-                                        SSBefore<<")";
-                                }
-                                if(Loops[i].outputs.size()>0){
-                                        SSBefore<<", rph::out(";
-                                        for(unsigned out = 0; out<Loops[i].outputs.size();out++){
-                                                SSBefore<<Loops[i].outputs[out];
-                                                if(out!=Loops[i].outputs.size()-1){
-                                                         SSBefore<<",";
-                                                }
-                                        }
-                                        SSBefore<<")";
-                               }
-
-			       SSBefore<<"]]";
+                //ADD MAP I/O
+                if(Loops[i].inputs.size()>0){
+                       SSBefore<<", rph::in(";
+                       for(unsigned in = 0; in<Loops[i].inputs.size();in++){
+                             SSBefore<<Loops[i].inputs[in];
+                             if(in!=Loops[i].inputs.size()-1){
+                                  SSBefore<<",";
+                              }
+                       }
+                       SSBefore<<")";
+                }
+                if(Loops[i].outputs.size()>0){
+                       SSBefore<<", rph::out(";
+                       for(unsigned out = 0; out<Loops[i].outputs.size();out++){
+                              SSBefore<<Loops[i].outputs[out];
+                              if(out!=Loops[i].outputs.size()-1){
+                                     SSBefore<<",";
+                              }
+                       }
+                       SSBefore<<")";
+                }
+                SSBefore<<"]]";
 			}			
 				
-                        SSBefore<<"\n";
+            SSBefore<<"\n";
 			TheRewriter.InsertText(Loops[i].RangeLoc.getBegin(), SSBefore.str(), true, true);
 
 		}
 	//	std::cout<<"TOTAL PIPELINES: "<<pipelinesCounter<<"\n";
 		}
         }
-	if(numLoops>0){
-		std::cout<<"TOTAL PIPELINES: "<<numpipelines<<"\n";
-		std::cout<<"TOTAL LOOPS: "<<numLoops<<"\n";
-		std::cout<<"FARM EQ PIPE: "<<feqp<<"\n";
-		std::cout<<"FARM EQ MAP: "<<feqm<<"\n";
-	}
+		std::cout<<"Pipeline patterns detected: "<<numpipelines<<"\n";
+        std::cout<<"Nested farms: "<<nestedFarm<<"\n";
+//		std::cout<<"Total loops found : "<<numLoops<<"\n";
+        std::cout<<std::flush;       
         return true;
  }
 
@@ -1391,18 +1400,18 @@ void MyASTVisitor::getStageIO(std::vector<std::vector<std::string>> &inputs, std
   				 bool loopHead = false;
 				 std::vector<ASTVar> iterators;
 				 int body = 0;
-                                 for(auto LoopSR = Loops[i].InternLoops.begin();LoopSR != Loops[i].InternLoops.end(); LoopSR++){
-                                         if((*vars).DeclLoc>(*LoopSR).getBegin().getRawEncoding()&&
-                                           (*vars).DeclLoc<(*LoopSR).getEnd().getRawEncoding()){
-                                                   inLocalLoop = true;
-                                          }
-					  if((*vars).RefLoc>(*LoopSR).getBegin().getRawEncoding()
+                 for(auto LoopSR = Loops[i].InternLoops.begin();LoopSR != Loops[i].InternLoops.end(); LoopSR++){
+                      if((*vars).DeclLoc>(*LoopSR).getBegin().getRawEncoding()&&
+                               (*vars).DeclLoc<(*LoopSR).getEnd().getRawEncoding()){
+                               inLocalLoop = true;
+                     }
+				     if((*vars).RefLoc>(*LoopSR).getBegin().getRawEncoding()
 						&&(*vars).RefLoc<Loops[i].BodyStarts[body].getRawEncoding()){
 						   iterators.push_back((*vars));
 						   loopHead= true;
 					  }
 					 body++;
-                                 }
+                }
 				//CHECK IF ANY REFERENCE INSIDE THE FOR DECLARATION DEPENDS ON OUTFOR VARIABLES
 				bool insideStage = false;
 				if(stIt!=stages&&stIt!=0){
@@ -1440,73 +1449,71 @@ void MyASTVisitor::getStageIO(std::vector<std::vector<std::string>> &inputs, std
 						internalIterator = true;
 				}
 				//If is not the first or last stage
-                                if(stIt!=stages&&stIt!=0&&!internalIterator){
+                if(stIt!=stages&&stIt!=0&&!internalIterator){
 					//If vars is on this stage
-                                        if((*vars).RefLoc<stagesLocEnds[stIt]&&(*vars).RefLoc>stagesLocEnds[stIt-1]/*&&(*vars).DeclLoc < stagesLocEnds[stIt-1]*/){
+                    if((*vars).RefLoc<stagesLocEnds[stIt]&&(*vars).RefLoc>stagesLocEnds[stIt-1]/*&&(*vars).DeclLoc < stagesLocEnds[stIt-1]*/){
 						//Check if is a value used outside the stage
-                                                //bool usedOut = checkOutVar((*vars),stagesLocEnds[stIt]);
-						//bool usedIn = checkInVar((*vars), stagesLocEnds[stIt-1]);
+                        bool usedOut = checkOutVar((*vars),stagesLocEnds[stIt]);
+						bool usedIn = checkInVar((*vars), stagesLocEnds[stIt-1]);
 						//If is not a local variable of an intern loop
 						if((*vars).lvalue&&!inLocalLoop){
-                                                        bool add = true;
-                                                        for(auto it = outputs[stIt].begin();it!=outputs[stIt].end();it++){
-                                                                if((*it) == (*vars).Name) add = false;
-                                                        }
-                                                        if(add/*&&usedOut*/) outputs[stIt].push_back((*vars).Name);
-							
-                                                        if((*vars).DeclLoc<stagesLocEnds[stIt-1]){
-                                                                for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
-                                                                        if((*it) == (*vars).Name) add = false;
-                                                                }
-                                                                if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
-                                                        }
-                                                }
-                                                if((*vars).rvalue&&(*vars).DeclLoc<stagesLocEnds[stIt-1]&&!inLocalLoop){
-                                                        bool add = true;
-                                                        for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
-                                                                if((*it) == (*vars).Name) add = false;
-                                                        }
-                                                        if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
-
-                                                }
-                                        }
+                               bool add = true;
+                               for(auto it = outputs[stIt].begin();it!=outputs[stIt].end();it++){
+                                         if((*it) == (*vars).Name) add = false;
+                               }
+                               if(add&&usedOut) outputs[stIt].push_back((*vars).Name);
+						
+                               if((*vars).DeclLoc<stagesLocEnds[stIt-1]){
+                                     for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
+                                         if((*it) == (*vars).Name) add = false;
+                                     }
+                                    if(add&&usedIn) inputs[stIt].push_back((*vars).Name);
+                               }
+                         }
+                         if((*vars).rvalue&&(*vars).DeclLoc<stagesLocEnds[stIt-1]&&!inLocalLoop){
+                                bool add = true;
+                                for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
+                                     if((*it) == (*vars).Name) add = false;
                                 }
+                                if(add&&usedIn) inputs[stIt].push_back((*vars).Name);
+                         }
+                    }
+                }
 				//If is the first stage
-                                if(stIt==0&&!internalIterator){
-                                        if((*vars).RefLoc<stagesLocEnds[stIt]){
-						//bool usedOut = checkOutVar((*vars),stagesLocEnds[stIt]);
-						//bool usedIn = checkInVar((*vars), Loops[i].InitLoc.getRawEncoding());
-                                                  if((*vars).lvalue&&!inLocalLoop){
-                                                        bool add = true;
-                                                        for(auto it = outputs[stIt].begin();it!=outputs[stIt].end();it++){
-                                                                if((*it) == (*vars).Name) add = false;
-                                                        }
-                                                        if(add/*&&usedOut*/) outputs[stIt].push_back((*vars).Name);
-
-                                                         if((*vars).DeclLoc<Loops[i].InitLoc.getRawEncoding()){
-                                                                for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
-                                                                        if((*it) == (*vars).Name) add = false;
-                                                                }
-                                                                if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
-
-                                                        }
-
-                                                }
-                                                if((*vars).rvalue&&(*vars).DeclLoc<Loops[i].InitLoc.getRawEncoding()&&!inLocalLoop){
-                                                        bool add = true;
-                                                        for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
-                                                                if((*it) == (*vars).Name) add = false;
-                                                        }
-                                                        if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
-
-                                                }
+                if(stIt==0&&!internalIterator){
+                        if((*vars).RefLoc<stagesLocEnds[stIt]){
+				            	bool usedOut = checkOutVar((*vars),stagesLocEnds[stIt]);
+                				bool usedIn = checkInVar((*vars), Loops[i].InitLoc.getRawEncoding());
+                                if((*vars).lvalue&&!inLocalLoop){
+                                        bool add = true;
+                                        if(!(*vars).cmpAssign&&(*vars).RefLoc == (*vars).DeclLoc) add = false;
+                                        for(auto it = outputs[stIt].begin();it!=outputs[stIt].end();it++){
+                                              if((*it) == (*vars).Name) add = false;
                                         }
-                                }
+                                        if(add&&usedOut) outputs[stIt].push_back((*vars).Name);
+
+                                        if((*vars).DeclLoc<Loops[i].InitLoc.getRawEncoding()){
+                                                for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
+                                                        if((*it) == (*vars).Name) add = false;
+                                                }
+                                                if(add&&usedIn) inputs[stIt].push_back((*vars).Name);
+                                         }
+                                 }
+                                 if((*vars).rvalue&&(*vars).DeclLoc<Loops[i].InitLoc.getRawEncoding()&&!inLocalLoop){
+                                         bool add = true;
+                                         for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
+                                                  if((*it) == (*vars).Name) add = false;
+                                         }
+                                        if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
+
+                                 }
+                       }
+                 }
 				//If is the last stage
                                 if(stIt==stages&&!internalIterator){
                                         if((*vars).RefLoc>stagesLocEnds[stIt-1]&&!inLocalLoop&&(*vars).DeclLoc<stagesLocEnds[stIt-1]){
-						//bool usedOut = true;/*checkOutVar((*vars),Loops[i].RangeLoc.getEnd().getRawEncoding());*/
-						//bool usedIn = checkInVar((*vars), stagesLocEnds[stIt-1]);
+						bool usedOut = checkOutVar((*vars),Loops[i].RangeLoc.getEnd().getRawEncoding());
+						bool usedIn = checkInVar((*vars), stagesLocEnds[stIt-1]);
 						//if is rvalue
                                                    if((*vars).lvalue){
 							//CHECK IF IS AN OUTPUT
@@ -1514,13 +1521,13 @@ void MyASTVisitor::getStageIO(std::vector<std::vector<std::string>> &inputs, std
                                                         for(auto it = outputs[stIt].begin();it!=outputs[stIt].end();it++){
                                                                 if((*it) == (*vars).Name) add = false;
                                                         }
-                                                        if(add/*&&usedOut*/) outputs[stIt].push_back((*vars).Name);
+                                                        if(add&&usedOut) outputs[stIt].push_back((*vars).Name);
 							//CHECK IF IS A INPUT
                                                         if((*vars).DeclLoc<stagesLocEnds[stIt-1]){
                                                                 for(auto it = inputs[stIt].begin();it!=inputs[stIt].end();it++){
                                                                         if((*it) == (*vars).Name) add = false;
                                                                 }
-                                                                if(add/*&&usedIn*/) inputs[stIt].push_back((*vars).Name);
+                                                                if(add&&usedIn) inputs[stIt].push_back((*vars).Name);
 
                                                         }
 
@@ -1576,11 +1583,11 @@ bool MyASTVisitor::checkInVar(ASTVar var, unsigned start){
         if(var.globalVar) return true;
         for(auto refs = Code.VarRef.begin();refs!= Code.VarRef.end();refs++){
                 if((*refs).RefLoc<=start){
-                        if((*refs).Name == var.Name &&
-                            (*refs).DeclLoc == var.DeclLoc
-                            &&(*refs).RefLoc != (*refs).DeclLoc){
-                                return true;
-                        }
+                     if((*refs).Name == var.Name &&
+                       (*refs).DeclLoc == var.DeclLoc
+                        &&(*refs).RefLoc != (*refs).DeclLoc){
+                          return true;
+                      }
                 }
         }
         return false;

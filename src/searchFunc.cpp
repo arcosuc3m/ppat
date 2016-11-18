@@ -325,20 +325,20 @@ void MyASTVisitor::searchFunc(Stmt *s,ASTFunctionDecl &Loop){
 
 		//Get loops for metrics
 		if(isa<ForStmt>(s)){
-                        Loop.InternLoops.push_back(s->getSourceRange());
-                }
-                if(isa<WhileStmt>(s)){
-                        Loop.InternLoops.push_back(s->getSourceRange());
-                }
-                if(isa<SwitchStmt>(s)){
-                        Loop.InternLoops.push_back(s->getSourceRange());
-                }
-                if(isa<IfStmt>(s)){
-                        Loop.ConditionalsStatements.push_back(s->getSourceRange());
-                }
-                if(isa<SwitchStmt>(s)){
-                        Loop.ConditionalsStatements.push_back(s->getSourceRange());
-                }
+                Loop.InternLoops.push_back(s->getSourceRange());
+         }
+         if(isa<WhileStmt>(s)){
+                Loop.InternLoops.push_back(s->getSourceRange());
+         }
+         if(isa<SwitchStmt>(s)){
+                Loop.InternLoops.push_back(s->getSourceRange());
+         }
+         if(isa<IfStmt>(s)){
+                Loop.ConditionalsStatements.push_back(s->getSourceRange());
+         }
+         if(isa<SwitchStmt>(s)){
+                Loop.ConditionalsStatements.push_back(s->getSourceRange());
+         }
 		if(isa<MemberExpr>(s)){
 			//auto mem = cast<MemberExpr>(s);
 			//ValueDecl *decl = mem->getMemberDecl();
