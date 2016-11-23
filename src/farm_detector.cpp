@@ -1,14 +1,13 @@
-
 /**
-  \fn  bool checkEmptyTask(int i)
-
-  Check wether a farm has or not a code region potentially parallelizable or not. 
-  If there is no parallel section, the loop is discarded to be refactored as a farm.
-
-*/
-
+ *  @brief Determine wether a farm has or not a code region potentially 
+ *    parallelizable or not. 
+ *
+ *  Check if there is no parallel section, if so then the loop is discarded 
+ *  to be refactored as a farm and the code is not modified.
+ *  @param i Index of the loop that is being analyzed
+ */
 bool MyASTVisitor::checkEmptyTask(int i){
-   bool empty = true;
+   bool empty = true; /* by default the loop is empty */
    for(auto stmt = Loops[i].stmtLoc.begin() ; stmt != Loops[i].stmtLoc.end(); stmt++){
       bool isTask = true;
       if((*stmt).getBegin().getRawEncoding() >= Loops[i].genStart.getRawEncoding()
@@ -25,12 +24,9 @@ bool MyASTVisitor::checkEmptyTask(int i){
 
 
 /**
-  \fn void getPrivated(int i)
- 
-  Get the variables used as non shared variables in the loop.
-
-*/
-
+ * @brief Get the variables used as non shared variables in the loop.
+ *
+ */
 void MyASTVisitor::getPrivated(int i){
     for(auto refs = (Loops[i].VarRef.end()-1);refs != (Loops[i].VarRef.begin()-1);refs--){
         bool memoryAccess = false;
@@ -346,13 +342,13 @@ void MyASTVisitor::farmDetect(){
         for(int i = 0; i < numLoops;i++){
            //llvm::errs()<<"LOOP: "<<i<<"\n"; 
            SourceManager &SM = TheRewriter.getSourceMgr();
-   		   auto fileName = Loops[i].FileName;
+         auto fileName = Loops[i].FileName;
            auto currfile = Loops[i].FileName;
            //Annotate only if the loop is in the current file. 
            if(fileName == currfile){
 
 
-		        std::stringstream SSComments;
+            std::stringstream SSComments;
                 bool comments = false;
                 //Analyze function calls
                 analyzeCall(i);
@@ -370,7 +366,7 @@ void MyASTVisitor::farmDetect(){
                 std::vector<std::string> inputs;
                 std::vector<std::string> inputTypes;
                 std::vector<std::string> outputTypes;
-		
+    
                 //Get inputs and outputs
                 getMapIO(inputs, inputTypes, outputs, outputTypes, i);
                 std::vector<std::string> outStreams;
@@ -387,23 +383,23 @@ void MyASTVisitor::farmDetect(){
                 //Check if output streams are only used as write or read in the same position. 
                 checkMemAccess(outStreams,i);
 
-        		bool hasreturn = false;
+            bool hasreturn = false;
                     if(Loops[i].Returns.size()>0){
                            hasreturn=true;
                  }
 
-        		bool hasbreak = check_break(i);
+            bool hasbreak = check_break(i);
 
                 bool hasgoto = false;
                 if(Loops[i].Gotos.size()>0){
                         hasgoto = true;
                 }
-		        
-        		bool empty = checkEmptyTask(i);	
-        		if(Loops[i].numOps == 0 ) empty = true;
-//	            if(Loops[i].genStart == Loops[i].RangeLoc.getBegin() && Loops[i].genEnd == Loops[i].RangeLoc.getEnd() && !valid) empty = true;
- 	
-        		for(auto funs = Loops[i].fCalls.begin();funs!=Loops[i].fCalls.end();funs++){
+            
+            bool empty = checkEmptyTask(i); 
+            if(Loops[i].numOps == 0 ) empty = true;
+//              if(Loops[i].genStart == Loops[i].RangeLoc.getBegin() && Loops[i].genEnd == Loops[i].RangeLoc.getEnd() && !valid) empty = true;
+  
+            for(auto funs = Loops[i].fCalls.begin();funs!=Loops[i].fCalls.end();funs++){
                         if((*funs).Name.find("fprintf")!=std::string::npos) valid = false;
                         if((*funs).Name.find("fscanf")!=std::string::npos) valid = false;
                         if((*funs).Name.find("strtok")!=std::string::npos) valid = false;
@@ -411,30 +407,30 @@ void MyASTVisitor::farmDetect(){
                 }
 
 
-		//----------- DEBUG ----------
-		/*llvm::errs()<<"INPUTS\n";
-		for(unsigned in=0;in<inputs.size();in++){
-			llvm::errs()<<inputs[in]<<"\n";
-		}
-		llvm::errs()<<"Outputs\n";
+    //----------- DEBUG ----------
+    /*llvm::errs()<<"INPUTS\n";
+    for(unsigned in=0;in<inputs.size();in++){
+      llvm::errs()<<inputs[in]<<"\n";
+    }
+    llvm::errs()<<"Outputs\n";
                 for(unsigned out=0;out<outputs.size();out++){
                         llvm::errs()<<outputs[out]<<"\n";
                 }*/
-		//----------------------------
+    //----------------------------
                 if(!feedback&&!globallvalue&&!hasreturn&&!empty&&!hasbreak&&!hasgoto&&valid){
-		            	numFarm++;
+                  numFarm++;
                         Loops[i].farm = true;
                         //ADD I/O IN LOOPS
-            			if(!Loops[i].map){
-	                        for(unsigned in=0;in<inputs.size();in++){
-	                                Loops[i].inputs.push_back(inputs[in]);
-	                                Loops[i].inputTypes.push_back(inputTypes[in]);
-	                        }
-                	        for(unsigned out=0;out<outputs.size();out++){
-        	                        Loops[i].outputs.push_back(outputs[out]);
-        	                        Loops[i].outputTypes.push_back(outputTypes[out]);
-	                        }
-		            	}
+                  if(!Loops[i].map){
+                          for(unsigned in=0;in<inputs.size();in++){
+                                  Loops[i].inputs.push_back(inputs[in]);
+                                  Loops[i].inputTypes.push_back(inputTypes[in]);
+                          }
+                          for(unsigned out=0;out<outputs.size();out++){
+                                  Loops[i].outputs.push_back(outputs[out]);
+                                  Loops[i].outputTypes.push_back(outputTypes[out]);
+                          }
+                  }
                 }else{
 
                         std::stringstream SSBefore;
@@ -445,17 +441,17 @@ void MyASTVisitor::farmDetect(){
                         SSBefore << "== Loop in "<<fileName<<":"<<line<< " does not match a farm pattern!\n";
                         if(feedback) SSBefore<<"\tFeedback detected.\n ";
                         if(globallvalue) SSBefore<<"\tFound a write on a global variable.\n";
-            			if(hasreturn) SSBefore<<"\tFound a return statement.\n";
-            			if(empty) SSBefore<<"\tFound no parallelizable statements.\n";
-            			if(hasbreak) SSBefore<<"\tFound break statement.\n";
-            			if(hasgoto) SSBefore<<"\tFound goto statement.\n";
+                  if(hasreturn) SSBefore<<"\tFound a return statement.\n";
+                  if(empty) SSBefore<<"\tFound no parallelizable statements.\n";
+                  if(hasbreak) SSBefore<<"\tFound break statement.\n";
+                  if(hasgoto) SSBefore<<"\tFound goto statement.\n";
 
 
-            			std::cout<<SSBefore.str();
+                  std::cout<<SSBefore.str();
 
                 }
-		}
-	}
-	std::cout<<"Farm patterns found: "<<numFarm;
+    }
+  }
+  std::cout<<"Farm patterns found: "<<numFarm;
     std::cout<<std::flush;
 }

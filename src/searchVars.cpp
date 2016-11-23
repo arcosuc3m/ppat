@@ -1,15 +1,15 @@
 #include <iostream>
 /**
-        Store variable under UnaryOperators in ASTstruct.
-        This function will search on the AST every occurence of 
-        variable under UnaryOperator and it will store 
-        name, location, type and kind (lvalue,rvalue,xvalue and glvalue).
-
-        @param[in]      s, pointer to the analyzed statement.
-        @param[in,out]  Loop, AST struct to store every variable information.
-
-*/
-
+ *      @brief Store variable under UnaryOperators in ASTstruct.
+ *
+ *      This function will search on the AST every occurence of 
+ *      variable under UnaryOperator and it will store 
+ *      name, location, type and kind (lvalue,rvalue,xvalue and glvalue).
+ *
+ *      @param[in]      s, pointer to the analyzed statement.
+ *      @param[in,out]  Loop, AST struct to store every variable information.
+ *
+ */
 template <typename Struct>
 bool MyASTVisitor::varsUnaryOperator(Stmt *s, Struct &Loop){
                 UnaryOperator * uo = cast<UnaryOperator>(s);

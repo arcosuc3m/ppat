@@ -35,6 +35,8 @@ LLVM_SRC_PATH=/opt/repara-llvm-3.8.0/
 LLVM_BUILD_PATH=${LLVM_SRC_PATH}
 LLVM_INSTALL_PATH=${LLVM_SRC_PATH}
 LLVM_BIN_PATH=${LLVM_SRC_PATH}/bin
+
+LIBS=../lib/*
 BIN=../bin
 # Run make BUILD_NINJA=1 to enable these paths
 ifdef BUILD_NINJA
@@ -178,7 +180,7 @@ all: ppat
 ppat: pattern_detector.cpp
 	mkdir -p ${BIN}
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	$(CLANG_LIBS) $(LLVM_LDFLAGS) -o ${BIN}/$@
+	$(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o ${BIN}/$@
 
 #loop_detection_sample: loop_detection_sample.cpp
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
