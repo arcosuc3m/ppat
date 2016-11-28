@@ -177,10 +177,14 @@ all: ppat
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-ppat: pattern_detector.cpp
+ppat: pattern_detector.cpp annotation_cleaner.cpp farm_detector.cpp getMetrics.cpp grppi_transform.cpp
 	mkdir -p ${BIN}
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 	$(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o ${BIN}/$@
+
+#doc: pattern_detector.cpp
+#	clang++ -S -emit-llvm $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
+#    $(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o - | opt -analyze -dot-callgraph
 
 #loop_detection_sample: loop_detection_sample.cpp
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \

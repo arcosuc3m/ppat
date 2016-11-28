@@ -1,6 +1,9 @@
+#pragma once
+
+#include <string>
 /**
  *  @brief split a string of characters 'str' into several string
- *  
+ *
  *  @param str string to be splited
  *  @param delimiter delimiter of each substring
  *  @return a vector with all the substrings

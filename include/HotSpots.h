@@ -2,11 +2,13 @@
  | Copyright 2016. Universidad Carlos III de Madrid.  |
  |Todos los derechos reservados / All rights reserved |
  *----------------------------------------------------*/
+#pragma once
 
-struct Hotspot{
-	std::string Name;
-	int line;
-	double percentageGCOV;
-	double percentageTime;
+#include <string>
 
+struct Hotspot {
+  std::string Name;
+  int line;
+  double percentageGCOV;
+  double percentageTime;
 };
