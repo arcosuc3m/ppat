@@ -1,4 +1,6 @@
 //#include "/opt/llvm-install-3.7.0/include/clang/AST/Stmt.h"
+#include "MyASTVisitor.hpp"
+#include "clang/Basic/SourceManager.h"
 #include "clang/AST/Stmt.h"
 
 clang::SourceLocation MyASTVisitor::getEndLocation(clang::SourceLocation EndLoc,

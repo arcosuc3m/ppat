@@ -19,7 +19,6 @@
 #include "clang/Frontend/ASTConsumers.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
-#include "clang/Lex/Lexer.h"
 #include "clang/Lex/LiteralSupport.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -30,6 +29,9 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "shared_ppat_variables.hpp"
+
+//#include "clang/Lex/Lexer.h"
 
 #define FUNCTION_DICTIONARY_PATH "../include/functionDictionary.txt"
 #define WHITE_LIST_PATH "../include/whiteList.txt"
@@ -44,35 +46,35 @@ std::vector<DictionaryFunction> dictionary;
 std::vector<int> dictionaryAdds;
 std::vector<std::string> whiteList;
 
-static llvm::cl::OptionCategory
+llvm::cl::OptionCategory
     ToolingSampleCategory("Parallel Pattern Analyzer Tool");
 // static llvm::cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 
-static llvm::cl::extrahelp
+llvm::cl::extrahelp
     MoreHelp("\nExecution command: ./PPAT [source_files] [options] -- "
              "[compiler_flags] \n");
 
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     PipelineOption("pipeline", llvm::cl::desc("Detect and analyze pipelines"),
                    llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     MapOption("map", llvm::cl::desc("Detect and analyze map patterns"),
               llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     ReduceOption("reduce", llvm::cl::desc("Detect and analyze reduce patterns"),
                  llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     FarmOption("farm", llvm::cl::desc("Detect and analyze farm patterns"),
                llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     omp("omp", llvm::cl::desc("Parallelize map patterns using OpenMP"),
         llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     grppi("grppi", llvm::cl::desc("Transform the original code to GrPPI"),
           llvm::cl::cat(ToolingSampleCategory));
 // static llvm::cl::opt<bool> MapReduceOption("mapreduce",llvm::cl::desc("Detect
 // and analyze map-reduce patterns"), llvm::cl::cat(ToolingSampleCategory));
-static llvm::cl::opt<bool>
+llvm::cl::opt<bool>
     CleanOption("clean", llvm::cl::desc("Erase pattern attributes"),
                 llvm::cl::cat(ToolingSampleCategory));
 
@@ -574,14 +576,6 @@ MyASTVisitor::~MyASTVisitor() {
 //----------------WORK IN PROGRESS--------------
 //----------------------------------------------
 //
-#include "getCondition.hpp"
-#include "map_detector.cpp"
-#include "pipeline_detector.cpp"
-#include "ppat_annotation.cpp"
-#include "reduce_detector.cpp"
-#include "searchFunc.cpp"
-#include "searchMemoryAccess.cpp"
-#include "searchVars.cpp"
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R) : Visitor(R) {}

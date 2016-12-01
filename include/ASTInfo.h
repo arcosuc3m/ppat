@@ -2,7 +2,8 @@
  | Copyright 2016. Universidad Carlos III de Madrid.  |
  |Todos los derechos reservados / All rights reserved |
  *----------------------------------------------------*/
-#pragma once
+#ifndef ASTINFO_H
+#define ASTINFO_H
 
 #include <string>
 #include <vector>
@@ -177,3 +178,4 @@ struct ASTFunctionDecl {
   int LNL = 0;
   double timePerf = 0;
 };
+#endif

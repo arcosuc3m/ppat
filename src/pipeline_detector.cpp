@@ -1,3 +1,7 @@
+#include "MyASTVisitor.hpp"
+#include "clang/Basic/SourceManager.h"
+#include "shared_ppat_variables.hpp"
+#include <iostream>
 
 void MyASTVisitor::moveDeclarations(int i, std::stringstream &declarations) {
   // Vector that stores declarations already moved

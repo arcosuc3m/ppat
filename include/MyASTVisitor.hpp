@@ -1,4 +1,6 @@
-#pragma once
+#ifndef MYASTVISITOR_H
+#define MYASTVISITOR_H
+
 #include "ASTInfo.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -183,3 +185,12 @@ public:
 
   ~MyASTVisitor();
 };
+
+/* include template implementation */
+
+#include "getMetrics.tpp"
+#include "getCondition.tpp"
+#include "searchVars.tpp"
+#include "searchMemoryAccess.tpp"
+
+#endif

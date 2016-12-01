@@ -1,15 +1,18 @@
+#include "MyASTVisitor.hpp"
+#include <iostream>
+#include "clang/Basic/SourceManager.h"
+#include "shared_ppat_variables.hpp"
+
 /**
-        \fn void getMapIO(std::vector<std::string>&
-   inputs,std::vector<std::string>& outputs,int i)
-
-        Analyze each variable reference and extract inputs and outputs for the
-        possible Map.
-
-        \param[out]	inputs	vector of input variables
-        \param[out]	outputs	vector of output variables
-        \param[in]	i	Loop to be analyzed
-
-*/
+ *
+ *  Analyze each variable reference and extract inputs and outputs for the
+ *  possible Map.
+ *
+ *  \param[out] inputs  vector of input variables
+ *  \param[out] outputs vector of output variables
+ *  \param[in]  i Loop to be analyzed
+ *
+ */
 void MyASTVisitor::getMapIO(std::vector<std::string> &inputs,
                             std::vector<std::string> &outputs, int i) {
   for (auto refs = Loops[i].VarRef.begin(); refs != Loops[i].VarRef.end();
@@ -127,16 +130,13 @@ void MyASTVisitor::getMapIO(std::vector<std::string> &inputs,
 }
 
 /**
-        \fn void getDataStreams(std::vector<std::string>& ioVector,
-   std::vector<std::string>& dataStreams, int i)
-
-        Get inputs or outputs that are a data stream type. (i.e. vector, array
-   ... )
-
-        \param[in]	ioVector	Vector of input or output variables
-        \param[out]	dataStreams	Vecot of extracted i/o data streams
-        \param[in] 	i	Loop to be analyzed
-*/
+ *
+ *  Get inputs or outputs that are a data stream type. (i.e. vector, array ... )
+ *
+ *  \param[in]  ioVector Vector of input or output variables
+ *  \param[out] dataStreams Vector of extracted i/o data streams
+ *  \param[in]  i Loop to be analyzed
+ */
 void MyASTVisitor::getDataStreams(std::vector<std::string> &ioVector,
                                   std::vector<std::string> &dataStreams,
                                   int i) {
@@ -156,14 +156,14 @@ void MyASTVisitor::getDataStreams(std::vector<std::string> &ioVector,
 }
 
 /**
-        bool checkPrivate(int i, ASTVar variable)
-
-        This function checks if a variable should be declared as private.
-
-        \param[in]	i	 	Loop to be analyzed
-        \param[in]	variable	Varaible to be analyzed
-
-*/
+ *      bool checkPrivate(int i, ASTVar variable)
+ *
+ *      This function checks if a variable should be declared as private.
+ *
+ *      \param[in]  i       Loop to be analyzed
+ *      \param[in]  variable    Varaible to be analyzed
+ *
+ */
 bool MyASTVisitor::checkPrivate(int i, ASTVar variable) {
   bool firstOcurr = true;
   SourceManager &SM = TheRewriter.getSourceMgr();
@@ -237,18 +237,18 @@ bool MyASTVisitor::checkPrivate(int i, ASTVar variable) {
 }
 
 /**
-        bool checkFeedback(int i, std::stringstream &SSComments, bool &comments)
-
-        This function checks if exists any feedback in the loop "i". If exists
-   feedback
-        return true.
-
-        RULE: On map functions must not exists any feedback
-
-        \param[in]	i	Loop to be analyzed
-        \param[out]	SSComments	Comments about the feedback
-        \param[out]	comments	bool to check if exists comments
-
+ *      bool checkFeedback(int i, std::stringstream &SSComments, bool &comments)
+ *
+ *      This function checks if exists any feedback in the loop "i". If exists
+ * feedback
+ *      return true.
+ *
+ *      RULE: On map functions must not exists any feedback
+ *
+ *      \param[in]  i   Loop to be analyzed
+ *      \param[out] SSComments  Comments about the feedback
+ *      \param[out] comments    bool to check if exists comments
+ *
 */
 bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments,
                                  bool &comments) {
@@ -330,7 +330,7 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments,
         }
         if (!localVar) {
           feedbackVAR = true;
-          //		feedback= true;
+          //        feedback= true;
         }
       }
 
@@ -374,7 +374,7 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments,
                     if (Loops[i].MemAccess[mem].index[index] !=
                         Loops[i].MemAccess[mem2].index[index]) {
                       feedbackVAR = true;
-                      //		feedback = true;
+                      //        feedback = true;
                     }
                   }
 
@@ -383,11 +383,11 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments,
                   if (Loops[i].MemAccess[mem].dimension !=
                       Loops[i].MemAccess[mem2].dimension) {
                     feedbackVAR = false;
-                    //	feedback = false;
+                    //  feedback = false;
 
                   } else {
                     feedbackVAR = true;
-                    //	feedback = true;
+                    //  feedback = true;
                   }
                 }
               }
@@ -493,15 +493,15 @@ bool MyASTVisitor::checkFeedback(int i, std::stringstream &SSComments,
 }
 
 /**
-        \fn void getStreamDependencies(std::vector<std::string> stream, int i)
-
-        This function check the dependencies between out data stream variables
-        and retrieve the list of each dependency.
-
-        \param[in]	stream	Vector of data stream to be checked
-        \param[in] 	i	Loop to be analyzed
-
-*/
+ *      \fn void getStreamDependencies(std::vector<std::string> stream, int i)
+ *
+ *      This function check the dependencies between out data stream variables
+ *      and retrieve the list of each dependency.
+ *
+ *      \param[in]  stream  Vector of data stream to be checked
+ *      \param[in]  i   Loop to be analyzed
+ *
+ */
 void MyASTVisitor::getStreamDependencies(std::vector<std::string> stream,
                                          int i) {
   std::vector<bool> found(stream.size());
@@ -540,7 +540,7 @@ void MyASTVisitor::getStreamDependencies(std::vector<std::string> stream,
           }
         }
         // DEBUG--------
-        /*	llvm::errs()<<(*refs).Name<<"DEPENDENCIES:\n";
+        /*  llvm::errs()<<(*refs).Name<<"DEPENDENCIES:\n";
                 for(int dep = 0 ; dep < (*refs).dependencies.size();dep++){
                         llvm::errs()<<" "<<(*refs).dependencies[dep].Name;
                 }
@@ -557,33 +557,34 @@ void MyASTVisitor::getStreamDependencies(std::vector<std::string> stream,
     }
   }
 }
+
 /**
-        \fn bool checkMapDependencies(std::vector<std::string> instream,
-   std::vector<std::string> outstream, int i)
-
-        This function checks the dependencies between input data streams and
-   output
-        data streams. If the loops is a map, dependencies between input an
-   output
-        data streams are necesary and one output should depends on only one
-        input data stream.
-
-        RULE:	Relatioship between input data stream and output data
-   stream 1 to 1
-
-        If the loop does not have input or output is not a map and this function
-   will return
-        false. If an output does not depend on any input, this dunction will
-   return false.
-        If an output depends on more than one input, this function will return
-   false. If
-        every output depends on only one input, this function will return true.
-
-        \param[in]	instream	Vector of input data streams
-        \param[in]	outstream	Vector of output data streams
-        \param[in]	i	Loop to be analyzed
-
-*/
+ *      \fn bool checkMapDependencies(std::vector<std::string> instream,
+ * std::vector<std::string> outstream, int i)
+ *
+ *      This function checks the dependencies between input data streams and
+ * output
+ *      data streams. If the loops is a map, dependencies between input an
+ * output
+ *      data streams are necesary and one output should depends on only one
+ *      input data stream.
+ *
+ *      RULE:   Relatioship between input data stream and output data
+ * stream 1 to 1
+ *
+ *      If the loop does not have input or output is not a map and this function
+ * will return
+ *      false. If an output does not depend on any input, this dunction will
+ * return false.
+ *      If an output depends on more than one input, this function will return
+ * false. If
+ *      every output depends on only one input, this function will return true.
+ *
+ *      \param[in]  instream    Vector of input data streams
+ *      \param[in]  outstream   Vector of output data streams
+ *      \param[in]  i   Loop to be analyzed
+ *
+ */
 bool MyASTVisitor::checkMapDependencies(std::vector<std::string> instream,
                                         std::vector<std::string> outstream,
                                         int i) {
@@ -596,7 +597,7 @@ bool MyASTVisitor::checkMapDependencies(std::vector<std::string> instream,
   }
   // Check relationship between input and output
   for (unsigned st = 0; st < outstream.size(); st++) {
-    //		bool found = false;
+    //      bool found = false;
     bool used = false;
     // bool invalid = false;
     for (auto refs = (Loops[i].Assign.end() - 1);
@@ -630,17 +631,17 @@ bool MyASTVisitor::checkMapDependencies(std::vector<std::string> instream,
 }
 
 /**
-        \fn bool checkMemAccess(std::vector<std::string> dataStreams,int i)
-
-        This function returns false if any data stream variable is used in more
-   than one position.
-
-        RULE: Output only can be accessed on only one position to be a map.
-
-        \param[in]	dataStreams	Data stream varaibles name
-        \param[in]	i	Loop to be analized
-
-*/
+ *      \fn bool checkMemAccess(std::vector<std::string> dataStreams,int i)
+ *
+ *      This function returns false if any data stream variable is used in more
+ * than one position.
+ *
+ *      RULE: Output only can be accessed on only one position to be a map.
+ *
+ *      \param[in]  dataStreams Data stream varaibles name
+ *      \param[in]  i   Loop to be analized
+ *
+ */
 bool MyASTVisitor::checkMemAccess(std::vector<std::string> dataStreams, int i) {
   // For each data stream variable
   for (unsigned data = 0; data < dataStreams.size(); data++) {
@@ -775,13 +776,12 @@ bool MyASTVisitor::check_break(int i) {
 }
 
 /**
-        \fn bool mapDetect()
-
-        This function analyze each loop on the source code to determine if any
-   loop is a Map pattern.
-
-*/
-
+ *      \fn bool mapDetect()
+ *
+ *      This function analyze each loop on the source code to determine if any
+ * loop is a Map pattern.
+ *
+ */
 void MyASTVisitor::mapDetect() {
   // Analize function declarations with bodies
   analyzeCodeFunctions();
@@ -789,7 +789,7 @@ void MyASTVisitor::mapDetect() {
   // int numpipelines = 0;
   for (int i = 0; i < numLoops; i++) {
     SourceManager &SM = TheRewriter.getSourceMgr();
-    /*		llvm::errs()<<"HERE 2\n";
+    /*      llvm::errs()<<"HERE 2\n";
 
                     auto lineStart =
        SM.getLineNumber(SM.getDecomposedLoc(Loops[i].RangeLoc.getBegin()).first,Loops[i].RangeLoc.getBegin().getRawEncoding());
@@ -806,7 +806,7 @@ void MyASTVisitor::mapDetect() {
     auto fileName = Loops[i].FileName;
     // auto currfile = SM.getFileEntryForID(SM.getMainFileID())->getName();
     auto currfile = fileName;
-    //		llvm::errs()<<"END FILE CHECKING\n";
+    //      llvm::errs()<<"END FILE CHECKING\n";
 
     // Annotate only if the loop is in the current file.
     if (fileName == currfile) {
@@ -827,7 +827,7 @@ void MyASTVisitor::mapDetect() {
       // Get inputs and outputs
       getMapIO(inputs, outputs, i);
       // DEBUG----------
-      /*		llvm::errs()<<"INPUTS:\n";
+      /*        llvm::errs()<<"INPUTS:\n";
                       for(int debug = 0;debug < inputs.size(); debug ++ ){
                               llvm::errs()<<inputs[debug]<<" ";
                       }
@@ -847,7 +847,7 @@ void MyASTVisitor::mapDetect() {
       getDataStreams(outputs, outStreams, i);
 
       // DEBUG
-      /*		llvm::errs()<<"INSTREAMS:\n";
+      /*        llvm::errs()<<"INSTREAMS:\n";
                       for(int debug = 0;debug < inStreams.size(); debug ++ ){
                               llvm::errs()<<inStreams[debug]<<" ";
                       }
@@ -897,11 +897,11 @@ void MyASTVisitor::mapDetect() {
       if (Loops[i].numOps == 0)
         empty = true;
 
-      //			SSBefore<<"[[rpr::map]]\n";
+      //            SSBefore<<"[[rpr::map]]\n";
       //                        TheRewriter.InsertText(Loops[i].RangeLoc.getBegin(),
       //                        SSBefore.str(), true, true);
 
-      //			llvm::errs()<<"LOOP "<<i<<" IS A MAP\n";
+      //            llvm::errs()<<"LOOP "<<i<<" IS A MAP\n";
       if (!invalid && !feedback && !globallvalue && !hasreturn && !empty &&
           !hasgoto && !hasbreak) {
         Loops[i].map = true;
@@ -939,7 +939,7 @@ void MyASTVisitor::mapDetect() {
 
         std::cout << SSBefore.str();
       }
-      //		else llvm::errs()<<"LOOP "<<i<<" IS NOT A MAP\n";
+      //        else llvm::errs()<<"LOOP "<<i<<" IS NOT A MAP\n";
     }
   }
   std::cout << "Map patterns detected : " << numMaps;

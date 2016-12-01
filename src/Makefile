@@ -177,7 +177,7 @@ all: ppat
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-ppat: pattern_detector.cpp annotation_cleaner.cpp farm_detector.cpp getMetrics.cpp grppi_transform.cpp
+ppat: pattern_detector.cpp annotation_cleaner.cpp farm_detector.cpp searchVars.cpp grppi_transform.cpp getMetrics.cpp map_detector.cpp pipeline_detector.cpp ppat_annotation.cpp reduce_detector.cpp searchFunc.cpp
 	mkdir -p ${BIN}
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 	$(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o ${BIN}/$@

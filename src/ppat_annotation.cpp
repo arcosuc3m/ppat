@@ -1,3 +1,6 @@
+#include "MyASTVisitor.hpp"
+#include "shared_ppat_variables.hpp"
+
 void MyASTVisitor::PPATAnnotate() {
   for (unsigned i = 0; i < Loops.size() && !grppi; i++) {
     if (Loops[i].map || Loops[i].farm || Loops[i].reduce) {

@@ -1,3 +1,8 @@
+#include "MyASTVisitor.hpp"
+#include "clang/Basic/SourceManager.h"
+#include "shared_ppat_variables.hpp"
+#include <iostream>
+
 template <typename Ref>
 bool MyASTVisitor::checkFeedbackSameLine(Ref refs, int i) {
   // Check on the same line

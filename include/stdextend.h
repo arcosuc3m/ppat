@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STDEXTEND_H
+#define STDEXTEND_H
 
 #include <string>
 /**
@@ -9,3 +10,4 @@
  *  @return a vector with all the substrings
  */
 std::vector<std::string> split(std::string str, char delimiter);
+#endif
