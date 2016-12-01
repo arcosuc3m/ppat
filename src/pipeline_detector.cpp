@@ -1,6 +1,6 @@
 #include "MyASTVisitor.hpp"
-#include "clang/Basic/SourceManager.h"
 #include "shared_ppat_variables.hpp"
+#include "clang/Basic/SourceManager.h"
 #include <iostream>
 
 void MyASTVisitor::moveDeclarations(int i, std::stringstream &declarations) {

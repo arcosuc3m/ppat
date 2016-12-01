@@ -1,7 +1,7 @@
 #include "MyASTVisitor.hpp"
-#include <iostream>
-#include "clang/AST/AST.h" /* Stmt */
 #include "ASTInfo.h"
+#include "clang/AST/AST.h" /* Stmt */
+#include <iostream>
 
 using namespace clang;
 /**

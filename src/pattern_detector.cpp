@@ -12,6 +12,7 @@
 #include "ASTInfo.h"
 #include "HotSpots.h"
 #include "dictionary.h"
+#include "shared_ppat_variables.hpp"
 #include "stdextend.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
@@ -29,7 +30,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include "shared_ppat_variables.hpp"
 
 //#include "clang/Lex/Lexer.h"
 
@@ -57,52 +57,52 @@ llvm::cl::extrahelp
 llvm::cl::opt<bool>
     PipelineOption("pipeline", llvm::cl::desc("Detect and analyze pipelines"),
                    llvm::cl::cat(ToolingSampleCategory));
-llvm::cl::opt<bool>
-    MapOption("map", llvm::cl::desc("Detect and analyze map patterns"),
-              llvm::cl::cat(ToolingSampleCategory));
+llvm::cl::opt<bool> MapOption("map",
+                              llvm::cl::desc("Detect and analyze map patterns"),
+                              llvm::cl::cat(ToolingSampleCategory));
 llvm::cl::opt<bool>
     ReduceOption("reduce", llvm::cl::desc("Detect and analyze reduce patterns"),
                  llvm::cl::cat(ToolingSampleCategory));
 llvm::cl::opt<bool>
     FarmOption("farm", llvm::cl::desc("Detect and analyze farm patterns"),
                llvm::cl::cat(ToolingSampleCategory));
-llvm::cl::opt<bool>
-    omp("omp", llvm::cl::desc("Parallelize map patterns using OpenMP"),
-        llvm::cl::cat(ToolingSampleCategory));
+llvm::cl::opt<bool> omp("omp",
+                        llvm::cl::desc("Parallelize map patterns using OpenMP"),
+                        llvm::cl::cat(ToolingSampleCategory));
 llvm::cl::opt<bool>
     grppi("grppi", llvm::cl::desc("Transform the original code to GrPPI"),
           llvm::cl::cat(ToolingSampleCategory));
 // static llvm::cl::opt<bool> MapReduceOption("mapreduce",llvm::cl::desc("Detect
 // and analyze map-reduce patterns"), llvm::cl::cat(ToolingSampleCategory));
-llvm::cl::opt<bool>
-    CleanOption("clean", llvm::cl::desc("Erase pattern attributes"),
-                llvm::cl::cat(ToolingSampleCategory));
+llvm::cl::opt<bool> CleanOption("clean",
+                                llvm::cl::desc("Erase pattern attributes"),
+                                llvm::cl::cat(ToolingSampleCategory));
 
 bool firstIteration = false;
 
 // Get variable references
 bool MyASTVisitor::VisitDeclRefExpr(DeclRefExpr *s) {
-    /*  if(s->getDecl()!= NULL){
-        if(isa<VarDecl>(s->getDecl())){
-            VarDecl *var = cast<VarDecl>(s->getDecl());
-            ASTVar newVarRef;
-            newVarRef.Name =
-   std::string(var->getIdentifier()->getNameStart());
-        newVarRef.RefLoc = s->getLocStart().getRawEncoding();
-            unsigned location = var->getLocStart().getRawEncoding();
-                        newVarRef.DeclLoc = location;
-            Code.VarRef.push_back(newVarRef);
-        }
-    }*/
-    return true;
-} 
+  /*  if(s->getDecl()!= NULL){
+      if(isa<VarDecl>(s->getDecl())){
+          VarDecl *var = cast<VarDecl>(s->getDecl());
+          ASTVar newVarRef;
+          newVarRef.Name =
+ std::string(var->getIdentifier()->getNameStart());
+      newVarRef.RefLoc = s->getLocStart().getRawEncoding();
+          unsigned location = var->getLocStart().getRawEncoding();
+                      newVarRef.DeclLoc = location;
+          Code.VarRef.push_back(newVarRef);
+      }
+  }*/
+  return true;
+}
 
 // Extract the number of statements for a given fragment of code
 int MyASTVisitor::getNumOps(Stmt *s) {
   int numOps = 0;
   if (s->children().begin() != s->children().end()) {
-    for (Stmt::child_iterator child = s->child_begin();
-      child != s->child_end(); child++) {
+    for (Stmt::child_iterator child = s->child_begin(); child != s->child_end();
+         child++) {
       numOps++;
     }
   }
@@ -129,8 +129,7 @@ bool MyASTVisitor::PipeLineDetector(Stmt *s, ASTLoop &Loop) {
     // If is a declstmt is the iterator
     if (isa<DeclStmt>(s)) {
       DeclStmt *dec = cast<DeclStmt>(s);
-      for (auto decIt = dec->decl_begin(); decIt != dec->decl_end();
-           decIt++) {
+      for (auto decIt = dec->decl_begin(); decIt != dec->decl_end(); decIt++) {
         if ((*decIt) != nullptr) {
           if (VarDecl *var = dyn_cast<VarDecl>((*decIt))) {
             Loop.Iterator.Name = var->getNameAsString();
@@ -177,8 +176,7 @@ bool MyASTVisitor::KernelDetectorLoop(Stmt *s, ASTLoop &Kernel) {
 
     if (isa<DeclStmt>(s)) {
       DeclStmt *dec = cast<DeclStmt>(s);
-      for (auto decIt = dec->decl_begin(); decIt != dec->decl_end();
-           decIt++) {
+      for (auto decIt = dec->decl_begin(); decIt != dec->decl_end(); decIt++) {
         if ((*decIt) != NULL) {
           if (VarDecl *var = cast<VarDecl>((*decIt))) {
             unsigned location = var->getLocStart().getRawEncoding();
@@ -224,310 +222,307 @@ bool MyASTVisitor::KernelDetector(Stmt *s, ASTLoop &Kernel) {
       searchVars(s, Kernel);
       searchFunc(s, Kernel);
       searchMemAcc(s, Kernel);
-        //                      Kernel.numOps = getNumOps(s);
-        //          getMetrics(s,Kernel);
-        return true;
-      }
+      //                      Kernel.numOps = getNumOps(s);
+      //          getMetrics(s,Kernel);
+      return true;
     }
-    return false;
+  }
+  return false;
 }
 
 bool MyASTVisitor::getIterator(Stmt *s, ASTLoop &currentLoop) {
-    // std::cout<<"GET ITERATOR\n";
-    if (s != nullptr) {
-      if (isa<DeclStmt>(s)) {
-        //      std::cout<<"DECL\n";
-        DeclStmt *dec = cast<DeclStmt>(s);
-        for (auto decIt = dec->decl_begin(); decIt != dec->decl_end();
-             decIt++) {
-          if ((*decIt) != NULL) {
-            if (VarDecl *var = cast<VarDecl>((*decIt))) {
-              //          std::cout<<"VAR NAME: "<<
-              //          var->getNameAsString()<<"\n";
-              unsigned location = var->getLocStart().getRawEncoding();
-              currentLoop.Iterator.Name = var->getNameAsString();
-              currentLoop.Iterator.type =
-                  clang::QualType::getAsString(var->getType().split());
-              currentLoop.Iterator.DeclLoc = location;
-              currentLoop.Iterator.RefLoc = location;
-            }
-          }
-        }
-        return true;
-        //     searchVars(s,Kernel);
-      }
-      if (isa<DeclRefExpr>(s)) {
-        //      std::cout<<"REF\n";
-        DeclRefExpr *ref = cast<DeclRefExpr>(s);
-        if (ref->getDecl() != NULL) {
-          if (VarDecl *var = dyn_cast<clang::VarDecl>(ref->getDecl())) {
-            //              std::cout<<"VAR NAME: "<<
-            //              var->getNameAsString()<<"\n";
-
+  // std::cout<<"GET ITERATOR\n";
+  if (s != nullptr) {
+    if (isa<DeclStmt>(s)) {
+      //      std::cout<<"DECL\n";
+      DeclStmt *dec = cast<DeclStmt>(s);
+      for (auto decIt = dec->decl_begin(); decIt != dec->decl_end(); decIt++) {
+        if ((*decIt) != NULL) {
+          if (VarDecl *var = cast<VarDecl>((*decIt))) {
+            //          std::cout<<"VAR NAME: "<<
+            //          var->getNameAsString()<<"\n";
+            unsigned location = var->getLocStart().getRawEncoding();
             currentLoop.Iterator.Name = var->getNameAsString();
             currentLoop.Iterator.type =
                 clang::QualType::getAsString(var->getType().split());
-            unsigned location = var->getLocStart().getRawEncoding();
             currentLoop.Iterator.DeclLoc = location;
-            currentLoop.Iterator.RefLoc = ref->getLocStart().getRawEncoding();
+            currentLoop.Iterator.RefLoc = location;
           }
         }
-        return true;
       }
-      if (s->children().begin() != s->children().end()) {
-        for (Stmt::child_iterator child = s->child_begin();
-             child != s->child_end(); child++) {
-          bool found = getIterator(*child, currentLoop);
-          if (found)
-            return true;
+      return true;
+      //     searchVars(s,Kernel);
+    }
+    if (isa<DeclRefExpr>(s)) {
+      //      std::cout<<"REF\n";
+      DeclRefExpr *ref = cast<DeclRefExpr>(s);
+      if (ref->getDecl() != NULL) {
+        if (VarDecl *var = dyn_cast<clang::VarDecl>(ref->getDecl())) {
+          //              std::cout<<"VAR NAME: "<<
+          //              var->getNameAsString()<<"\n";
+
+          currentLoop.Iterator.Name = var->getNameAsString();
+          currentLoop.Iterator.type =
+              clang::QualType::getAsString(var->getType().split());
+          unsigned location = var->getLocStart().getRawEncoding();
+          currentLoop.Iterator.DeclLoc = location;
+          currentLoop.Iterator.RefLoc = ref->getLocStart().getRawEncoding();
         }
       }
-      return false;
+      return true;
+    }
+    if (s->children().begin() != s->children().end()) {
+      for (Stmt::child_iterator child = s->child_begin();
+           child != s->child_end(); child++) {
+        bool found = getIterator(*child, currentLoop);
+        if (found)
+          return true;
+      }
     }
     return false;
+  }
+  return false;
 }
 
 void MyASTVisitor::getStatementLocation(Stmt *s, ASTLoop &lp) {
   if (s->children().begin() != s->children().end()) {
-    for (Stmt::child_iterator child = s->child_begin();
-         child != s->child_end(); child++) {
+    for (Stmt::child_iterator child = s->child_begin(); child != s->child_end();
+         child++) {
       lp.stmtLoc.push_back((*child)->getSourceRange());
     }
   }
 }
 
-
 bool MyASTVisitor::VisitStmt(Stmt *s) {
-    searchVars(s, Code);
-    //  searchFunc(s,Code);
-    //  SourceManager &SM = TheRewriter.getSourceMgr();
-    //      newFun.FileName =
-    //      SM.getFileEntryForID(SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first)->getName();
+  searchVars(s, Code);
+  //  searchFunc(s,Code);
+  //  SourceManager &SM = TheRewriter.getSourceMgr();
+  //      newFun.FileName =
+  //      SM.getFileEntryForID(SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first)->getName();
 
-    // If is a for
-    if (isa<ForStmt>(s)) {
-      // Store data for pipeline detector
-      Stmt *Statement = cast<Stmt>(s);
-      ASTLoop actualLoop;
-      actualLoop.type = 0;
-      actualLoop.LoopRef = Statement;
-      actualLoop.RangeLoc = Statement->getSourceRange();
-      actualLoop.LoopLoc = Statement->getLocStart();
-      SourceManager &SM = TheRewriter.getSourceMgr();
-      clang::PresumedLoc presumed = SM.getPresumedLoc(actualLoop.LoopLoc);
-      actualLoop.FileName = presumed.getFilename();
-      // actualLoop.FileName =
-      // SM.getFileEntryForID(SM.getDecomposedLoc(actualLoop.RangeLoc.getEnd()).first)->getName();
+  // If is a for
+  if (isa<ForStmt>(s)) {
+    // Store data for pipeline detector
+    Stmt *Statement = cast<Stmt>(s);
+    ASTLoop actualLoop;
+    actualLoop.type = 0;
+    actualLoop.LoopRef = Statement;
+    actualLoop.RangeLoc = Statement->getSourceRange();
+    actualLoop.LoopLoc = Statement->getLocStart();
+    SourceManager &SM = TheRewriter.getSourceMgr();
+    clang::PresumedLoc presumed = SM.getPresumedLoc(actualLoop.LoopLoc);
+    actualLoop.FileName = presumed.getFilename();
+    // actualLoop.FileName =
+    // SM.getFileEntryForID(SM.getDecomposedLoc(actualLoop.RangeLoc.getEnd()).first)->getName();
 
-      // ESTA PARTE NO ME CONVENCE. TAL VEZ SE PUEDA MODIFICAR PARA QUE SEA
-      // COMPOUND O NO FUNCIONE EL MISMO SISTEMA. AHORA MISMO NO TENGO CLARO
-      // COMO HACERLO; PERO LOOPS DE UNA LINEA NO CAPTURAN SUS ITERADORES.
-      bool compound = PipeLineDetector(Statement, actualLoop);
-      if (!compound) {
-        getIterator(s, actualLoop);
-        ForStmt *loop = cast<ForStmt>(s);
-        Stmt *body = loop->getBody();
-        nonCompundLoop(body, actualLoop);
-      }
-      bool add = true;
-      std::vector<ASTLoop> LoopsBack{};
-      for (auto l = Loops.begin(); l != Loops.end(); l++) {
-        if ((actualLoop.RangeLoc.getBegin() != (*l).RangeLoc.getBegin()) ||
-            (actualLoop.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
-          LoopsBack.push_back(*l);
-        }
-      }
-      Loops = std::move(LoopsBack);
-      if (add) {
-        Loops.push_back(actualLoop);
-        numLoops = Loops.size();
-      }
-      return true;
-    }
-    // If is a while loop
-    if (isa<WhileStmt>(s)) {
-      // Store data for pipeline detector
-      Stmt *Statement = cast<Stmt>(s);
-
-      WhileStmt *loop = cast<WhileStmt>(s);
-      ASTLoop actualLoop;
-      actualLoop.LoopRef = Statement;
-      actualLoop.RangeLoc = Statement->getSourceRange();
-      actualLoop.LoopLoc = Statement->getLocStart();
-      SourceManager &SM = TheRewriter.getSourceMgr();
-      clang::PresumedLoc presumed = SM.getPresumedLoc(actualLoop.LoopLoc);
-      actualLoop.FileName = presumed.getFilename();
-      actualLoop.type = 1;
-      Expr *condition = loop->getCond();
+    // ESTA PARTE NO ME CONVENCE. TAL VEZ SE PUEDA MODIFICAR PARA QUE SEA
+    // COMPOUND O NO FUNCIONE EL MISMO SISTEMA. AHORA MISMO NO TENGO CLARO
+    // COMO HACERLO; PERO LOOPS DE UNA LINEA NO CAPTURAN SUS ITERADORES.
+    bool compound = PipeLineDetector(Statement, actualLoop);
+    if (!compound) {
+      getIterator(s, actualLoop);
+      ForStmt *loop = cast<ForStmt>(s);
       Stmt *body = loop->getBody();
-      getStatementLocation(body, actualLoop);
-      actualLoop.conditionRange = condition->getSourceRange();
-      actualLoop.bodyRange = body->getSourceRange();
-      //        getLoopCondition(condition, actualLoop);
-
-      //      actualLoop.FileName =
-      //      SM.getFileEntryForID(SM.getDecomposedLoc(actualLoop.RangeLoc.getEnd()).first)->getName();
-
-      // APLICA LO MISMO QUE PARA EL BUCLE FOR. REVISAR.
-      bool compound = PipeLineDetector(Statement, actualLoop);
-      if (!compound) {
-        nonCompundLoop(body, actualLoop);
-      }
-      bool add = true;
-      std::vector<ASTLoop> LoopsBack{};
-      for (auto l = Loops.begin(); l != Loops.end(); l++) {
-        if ((actualLoop.RangeLoc.getBegin() != (*l).RangeLoc.getBegin()) ||
-            (actualLoop.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
-          // Kernels.erase(l);
-          LoopsBack.push_back(*l);
-        }
-      }
-      Loops = std::move(LoopsBack);
-      if (add) {
-        Loops.push_back(actualLoop);
-        numLoops = Loops.size();
-      }
-      return true;
+      nonCompundLoop(body, actualLoop);
     }
-    // If is an attributed statement
-    if (isa<AttributedStmt>(s)) {
-      AttributedStmt *attr = cast<AttributedStmt>(s);
-      auto attributes = attr->getAttrs();
-      bool added = false;
-      bool farm = false;
-      bool map = false;
-      bool pipeline = false;
-      // Access every attribute defined
-      for (auto it = attributes.begin(); it != attributes.end(); it++) {
-        if ((*it)->getKind() == attr::Kind::RPRPipeline) {
-          pipeline = true;
-          if (added) {
-            Kernels[Kernels.size() - 1].pipeline = true;
-          }
-        }
-        if ((*it)->getKind() == attr::Kind::RPRMap) {
-          map = true;
-          if (added) {
-            Kernels[Kernels.size() - 1].map = true;
-          }
-        }
-        if ((*it)->getKind() == attr::Kind::RPRFarm) {
-          farm = true;
-          if (added) {
-            Kernels[Kernels.size() - 1].farm = true;
-          }
-        }
-
-        // Check attribute kind
-        if ((*it)->getKind() == attr::Kind::RPRKernel) {
-
-          // If is RPRKernel
-          for (Stmt::child_iterator ci = s->child_begin(); ci != s->child_end();
-               ci++) {
-            Stmt *Statement = cast<Stmt>(*ci);
-            ASTLoop actualKernel;
-            actualKernel.RangeLoc = Statement->getSourceRange();
-            actualKernel.LoopLoc = Statement->getLocStart();
-            KernelDetector(Statement, actualKernel);
-            if (farm)
-              actualKernel.farm = true;
-            if (map)
-              actualKernel.map = true;
-            if (pipeline)
-              actualKernel.pipeline = true;
-            bool add = true;
-            std::vector<ASTLoop> KernelsBack{};
-            for (auto l = Kernels.begin(); l != Kernels.end(); l++) {
-              if ((actualKernel.RangeLoc.getBegin() !=
-                   (*l).RangeLoc.getBegin()) ||
-                  (actualKernel.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
-                // Kernels.erase(l);
-                KernelsBack.push_back(*l);
-              }
-            }
-            Kernels = std::move(KernelsBack);
-            // KernelsBack.cleari();
-
-            if (add) {
-              Kernels.push_back(actualKernel);
-              added = true;
-            }
-          }
-        }
+    bool add = true;
+    std::vector<ASTLoop> LoopsBack{};
+    for (auto l = Loops.begin(); l != Loops.end(); l++) {
+      if ((actualLoop.RangeLoc.getBegin() != (*l).RangeLoc.getBegin()) ||
+          (actualLoop.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
+        LoopsBack.push_back(*l);
       }
+    }
+    Loops = std::move(LoopsBack);
+    if (add) {
+      Loops.push_back(actualLoop);
+      numLoops = Loops.size();
     }
     return true;
+  }
+  // If is a while loop
+  if (isa<WhileStmt>(s)) {
+    // Store data for pipeline detector
+    Stmt *Statement = cast<Stmt>(s);
+
+    WhileStmt *loop = cast<WhileStmt>(s);
+    ASTLoop actualLoop;
+    actualLoop.LoopRef = Statement;
+    actualLoop.RangeLoc = Statement->getSourceRange();
+    actualLoop.LoopLoc = Statement->getLocStart();
+    SourceManager &SM = TheRewriter.getSourceMgr();
+    clang::PresumedLoc presumed = SM.getPresumedLoc(actualLoop.LoopLoc);
+    actualLoop.FileName = presumed.getFilename();
+    actualLoop.type = 1;
+    Expr *condition = loop->getCond();
+    Stmt *body = loop->getBody();
+    getStatementLocation(body, actualLoop);
+    actualLoop.conditionRange = condition->getSourceRange();
+    actualLoop.bodyRange = body->getSourceRange();
+    //        getLoopCondition(condition, actualLoop);
+
+    //      actualLoop.FileName =
+    //      SM.getFileEntryForID(SM.getDecomposedLoc(actualLoop.RangeLoc.getEnd()).first)->getName();
+
+    // APLICA LO MISMO QUE PARA EL BUCLE FOR. REVISAR.
+    bool compound = PipeLineDetector(Statement, actualLoop);
+    if (!compound) {
+      nonCompundLoop(body, actualLoop);
+    }
+    bool add = true;
+    std::vector<ASTLoop> LoopsBack{};
+    for (auto l = Loops.begin(); l != Loops.end(); l++) {
+      if ((actualLoop.RangeLoc.getBegin() != (*l).RangeLoc.getBegin()) ||
+          (actualLoop.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
+        // Kernels.erase(l);
+        LoopsBack.push_back(*l);
+      }
+    }
+    Loops = std::move(LoopsBack);
+    if (add) {
+      Loops.push_back(actualLoop);
+      numLoops = Loops.size();
+    }
+    return true;
+  }
+  // If is an attributed statement
+  if (isa<AttributedStmt>(s)) {
+    AttributedStmt *attr = cast<AttributedStmt>(s);
+    auto attributes = attr->getAttrs();
+    bool added = false;
+    bool farm = false;
+    bool map = false;
+    bool pipeline = false;
+    // Access every attribute defined
+    for (auto it = attributes.begin(); it != attributes.end(); it++) {
+      if ((*it)->getKind() == attr::Kind::RPRPipeline) {
+        pipeline = true;
+        if (added) {
+          Kernels[Kernels.size() - 1].pipeline = true;
+        }
+      }
+      if ((*it)->getKind() == attr::Kind::RPRMap) {
+        map = true;
+        if (added) {
+          Kernels[Kernels.size() - 1].map = true;
+        }
+      }
+      if ((*it)->getKind() == attr::Kind::RPRFarm) {
+        farm = true;
+        if (added) {
+          Kernels[Kernels.size() - 1].farm = true;
+        }
+      }
+
+      // Check attribute kind
+      if ((*it)->getKind() == attr::Kind::RPRKernel) {
+
+        // If is RPRKernel
+        for (Stmt::child_iterator ci = s->child_begin(); ci != s->child_end();
+             ci++) {
+          Stmt *Statement = cast<Stmt>(*ci);
+          ASTLoop actualKernel;
+          actualKernel.RangeLoc = Statement->getSourceRange();
+          actualKernel.LoopLoc = Statement->getLocStart();
+          KernelDetector(Statement, actualKernel);
+          if (farm)
+            actualKernel.farm = true;
+          if (map)
+            actualKernel.map = true;
+          if (pipeline)
+            actualKernel.pipeline = true;
+          bool add = true;
+          std::vector<ASTLoop> KernelsBack{};
+          for (auto l = Kernels.begin(); l != Kernels.end(); l++) {
+            if ((actualKernel.RangeLoc.getBegin() !=
+                 (*l).RangeLoc.getBegin()) ||
+                (actualKernel.RangeLoc.getEnd() != (*l).RangeLoc.getEnd())) {
+              // Kernels.erase(l);
+              KernelsBack.push_back(*l);
+            }
+          }
+          Kernels = std::move(KernelsBack);
+          // KernelsBack.cleari();
+
+          if (add) {
+            Kernels.push_back(actualKernel);
+            added = true;
+          }
+        }
+      }
+    }
+  }
+  return true;
 }
 
 bool MyASTVisitor::VisitFunctionDecl(FunctionDecl *f) {
-    if (firstIteration) {
-      // Only function definitions (with bodies), not declarations.
-      if (f->hasBody()) {
-        ASTFunctionDecl newFun;
-        newFun.Name = f->getNameAsString();
-        // If is not the main
-        if (newFun.Name != "main") {
-          /*if(isa<CXXConversionDecl>(f)||isa<CXXConstructorDecl>(f)){
-  //          DeclContext* cntx = castToDeclContext(f);
-              return true;
-          }*/
-          // Store function as accessible function
-          newFun.FuncDecl = f->getSourceRange().getBegin();
-          newFun.RangeLoc = f->getSourceRange();
-          // Get file name
-          SourceManager &SM = TheRewriter.getSourceMgr();
-          newFun.FileName =
-              SM.getFileEntryForID(
-                    SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first)
-                  ->getName();
-          newFun.startLine = SM.getLineNumber(
-              SM.getDecomposedLoc(newFun.RangeLoc.getBegin()).first,
-              newFun.RangeLoc.getBegin().getRawEncoding());
-          newFun.endLine = SM.getLineNumber(
-              SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first,
-              newFun.RangeLoc.getEnd().getRawEncoding());
+  if (firstIteration) {
+    // Only function definitions (with bodies), not declarations.
+    if (f->hasBody()) {
+      ASTFunctionDecl newFun;
+      newFun.Name = f->getNameAsString();
+      // If is not the main
+      if (newFun.Name != "main") {
+        /*if(isa<CXXConversionDecl>(f)||isa<CXXConstructorDecl>(f)){
+//          DeclContext* cntx = castToDeclContext(f);
+            return true;
+        }*/
+        // Store function as accessible function
+        newFun.FuncDecl = f->getSourceRange().getBegin();
+        newFun.RangeLoc = f->getSourceRange();
+        // Get file name
+        SourceManager &SM = TheRewriter.getSourceMgr();
+        newFun.FileName =
+            SM.getFileEntryForID(
+                  SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first)
+                ->getName();
+        newFun.startLine = SM.getLineNumber(
+            SM.getDecomposedLoc(newFun.RangeLoc.getBegin()).first,
+            newFun.RangeLoc.getBegin().getRawEncoding());
+        newFun.endLine = SM.getLineNumber(
+            SM.getDecomposedLoc(newFun.RangeLoc.getEnd()).first,
+            newFun.RangeLoc.getEnd().getRawEncoding());
 
-          //      newFun.FileName = SM.getFilename(newFun.FuncDecl).str();
-          // Get arguments
-          unsigned numParam = f->getNumParams();
-          for (unsigned i = 0; i < numParam; i++) {
-            ASTVar arg;
-            arg.Name = f->getParamDecl(i)->getNameAsString();
-            newFun.Arguments.push_back(arg);
-          }
-          // Serach variables and functions
-          Stmt *body = f->getBody();
-          searchVars(body, newFun);
-          searchFunc(body, newFun);
-          // getMetrics(body,newFun);
-          bool add = true;
-          for (unsigned l = 0; l < Functions.size(); l++) {
-            if (newFun.RangeLoc.getBegin() ==
-                    Functions[l].RangeLoc.getBegin() &&
-                newFun.RangeLoc.getEnd() == Functions[l].RangeLoc.getEnd() &&
-                newFun.Name == Functions[l].Name)
-              add = false;
-          }
-          if (add)
-            Functions.push_back(newFun);
+        //      newFun.FileName = SM.getFilename(newFun.FuncDecl).str();
+        // Get arguments
+        unsigned numParam = f->getNumParams();
+        for (unsigned i = 0; i < numParam; i++) {
+          ASTVar arg;
+          arg.Name = f->getParamDecl(i)->getNameAsString();
+          newFun.Arguments.push_back(arg);
         }
+        // Serach variables and functions
+        Stmt *body = f->getBody();
+        searchVars(body, newFun);
+        searchFunc(body, newFun);
+        // getMetrics(body,newFun);
+        bool add = true;
+        for (unsigned l = 0; l < Functions.size(); l++) {
+          if (newFun.RangeLoc.getBegin() == Functions[l].RangeLoc.getBegin() &&
+              newFun.RangeLoc.getEnd() == Functions[l].RangeLoc.getEnd() &&
+              newFun.Name == Functions[l].Name)
+            add = false;
+        }
+        if (add)
+          Functions.push_back(newFun);
       }
-      return true;
     }
     return true;
+  }
+  return true;
 }
 
 bool MyASTVisitor::TraverseDecl(Decl *D) {
-    bool rval;
-    SourceManager &SM = TheRewriter.getSourceMgr();
-    if (!D) {
-      return true;
-    }
-    if (!SM.isInSystemHeader(D->getLocation()) ||
-        std::string(D->getDeclKindName()) == "TranslationUnit") {
-      rval = clang::RecursiveASTVisitor<MyASTVisitor>::TraverseDecl(D);
-    } else {
-      rval = true;
+  bool rval;
+  SourceManager &SM = TheRewriter.getSourceMgr();
+  if (!D) {
+    return true;
+  }
+  if (!SM.isInSystemHeader(D->getLocation()) ||
+      std::string(D->getDeclKindName()) == "TranslationUnit") {
+    rval = clang::RecursiveASTVisitor<MyASTVisitor>::TraverseDecl(D);
+  } else {
+    rval = true;
   }
   return rval;
 }
@@ -547,31 +542,31 @@ bool MyASTVisitor::nonCompundLoop(Stmt *s, ASTLoop &Loop) {
 
 // Analyze the colected data on the second iteration and destroys the visitor
 MyASTVisitor::~MyASTVisitor() {
-    if (!firstIteration) {
-      //      llvm::errs()<<"---STARTING ANALYSIS---\n";
-      std::cout << "\n\nStarting map detection phase... \n";
-      if (MapOption)
-        mapDetect();
-      std::cout << "\n\nStarting farm detection phase... \n";
-      if (FarmOption)
-        farmDetect();
-      std::cout << "\n\nStarting reduce detection phase...\n";
-      if (ReduceOption)
-        reduceDetect();
-      std::cout << "\n\nStarting pipeline detection phase... \n";
-      if (PipelineOption)
-        AnalyzeLoops();
-      if (CleanOption)
-        clean();
-      if (!PipelineOption)
-        PPATAnnotate();
-      if (grppi) {
-        PPATtoGRPPI();
-      }
-      TheRewriter.overwriteChangedFiles();
-      //      llvm::errs()<<"---ANALYSIS FINISHED---\n";
+  if (!firstIteration) {
+    //      llvm::errs()<<"---STARTING ANALYSIS---\n";
+    std::cout << "\n\nStarting map detection phase... \n";
+    if (MapOption)
+      mapDetect();
+    std::cout << "\n\nStarting farm detection phase... \n";
+    if (FarmOption)
+      farmDetect();
+    std::cout << "\n\nStarting reduce detection phase...\n";
+    if (ReduceOption)
+      reduceDetect();
+    std::cout << "\n\nStarting pipeline detection phase... \n";
+    if (PipelineOption)
+      AnalyzeLoops();
+    if (CleanOption)
+      clean();
+    if (!PipelineOption)
+      PPATAnnotate();
+    if (grppi) {
+      PPATtoGRPPI();
     }
+    TheRewriter.overwriteChangedFiles();
+    //      llvm::errs()<<"---ANALYSIS FINISHED---\n";
   }
+}
 
 //----------------WORK IN PROGRESS--------------
 //----------------------------------------------

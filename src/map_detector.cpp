@@ -1,7 +1,7 @@
 #include "MyASTVisitor.hpp"
-#include <iostream>
-#include "clang/Basic/SourceManager.h"
 #include "shared_ppat_variables.hpp"
+#include "clang/Basic/SourceManager.h"
+#include <iostream>
 
 /**
  *
