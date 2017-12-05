@@ -35,8 +35,6 @@ LLVM_SRC_PATH=/opt/repara-llvm-3.8.0/
 LLVM_BUILD_PATH=${LLVM_SRC_PATH}
 LLVM_INSTALL_PATH=${LLVM_SRC_PATH}
 LLVM_BIN_PATH=${LLVM_SRC_PATH}/bin
-
-LIBS=../lib/*
 BIN=../bin
 # Run make BUILD_NINJA=1 to enable these paths
 ifdef BUILD_NINJA
@@ -177,14 +175,10 @@ all: ppat
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
 		$(CLANG_LIBS) $(LLVM_LDFLAGS) -o $@
 
-ppat: pattern_detector.cpp annotation_cleaner.cpp farm_detector.cpp searchVars.cpp grppi_transform.cpp getMetrics.cpp map_detector.cpp pipeline_detector.cpp ppat_annotation.cpp reduce_detector.cpp searchFunc.cpp
+ppat: pattern_detector.cpp
 	mkdir -p ${BIN}
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-	$(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o ${BIN}/$@
-
-#doc: pattern_detector.cpp
-#	clang++ -S -emit-llvm $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \
-#    $(CLANG_LIBS) $(LLVM_LDFLAGS) $(LIBS) -o - | opt -analyze -dot-callgraph
+	$(CLANG_LIBS) $(LLVM_LDFLAGS) -o ${BIN}/$@
 
 #loop_detection_sample: loop_detection_sample.cpp
 #	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CLANG_INCLUDES) $^ \

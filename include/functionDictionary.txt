@@ -24,6 +24,7 @@ vranlc 1:U 3:U
 operator>> 0:U
 getline 0:U 1:U
 basic_string.operator= 0:U
-
 basic_ostream.operator<< 0:U
 basic_istream.operator>> 0:U
+
+push_back 0:U

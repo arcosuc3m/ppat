@@ -1,4 +1,5 @@
 GaussianBlur
+push_back
 addWeighted
 Sobel
 sqrt
@@ -7,4 +8,7 @@ vector.operator[]
 size
 basic_string.operator=
 basic_ostream.operator<<
-
+Blur
+Sobel2
+Blur2
+vector.operator=
